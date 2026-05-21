@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedidos</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <button class="back-button" onclick="history.back()" aria-label="Voltar para página anterior">←</button>
+    <div class="container">
+        <h1>Pedidos</h1>
+
+        <div class="card">
+            <div class="button-row">
+                <button type="button" class="new-order-btn">Novo Pedido</button>
+            </div>
+
+            <div id="order-form" class="card client-card hidden-field" style="margin-top:18px;">
+                <h2>Novo Pedido</h2>
+
+                <div class="row">
+                    <div class="field">
+                        <label>Código do pedido</label>
+                        <input type="text" class="order-code" readonly />
+                    </div>
+                    <div class="field">
+                        <label>Data do pedido</label>
+                        <input type="text" class="order-date" readonly />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="field">
+                        <label>Cliente</label>
+                        <select class="order-client-select">
+                            <option value="">-- selecione cliente --</option>
+                            <option value="_new">Novo cliente</option>
+                        </select>
+                    </div>
+                    <div class="field client-name-new-row hidden-field">
+                        <label>Nome do cliente</label>
+                        <input type="text" class="order-client-name-new" placeholder="Nome do cliente" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="field">
+                        <label>Produto</label>
+                        <select class="order-product">
+                            <option value="">-- selecione produto --</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>Quantidade</label>
+                        <input type="number" class="order-quantity" min="1" value="1" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="field">
+                        <label>Desconto (R$)</label>
+                        <input type="number" class="order-discount" min="0" step="0.01" placeholder="0,00" />
+                    </div>
+                    <div class="field">
+                        <label>Frete (R$)</label>
+                        <input type="number" class="order-freight" min="0" step="0.01" placeholder="0,00" />
+                    </div>
+                    <div class="field">
+                        <label>Outras taxas (R$)</label>
+                        <input type="number" class="order-fees" min="0" step="0.01" placeholder="0,00" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="field">
+                        <label>Total do pedido</label>
+                        <input type="text" class="order-total" readonly value="R$ 0,00" />
+                    </div>
+                </div>
+
+                <div class="value-box">
+                    <strong>Condições de pagamento</strong>
+                    <div class="row">
+                        <div class="field">
+                            <label>Opção</label>
+                            <div style="display:flex; gap:16px; flex-wrap: wrap;">
+                                <label><input type="radio" name="order-payment" value="avista" checked /> À vista</label>
+                                <label><input type="radio" name="order-payment" value="sinal" /> Sinal</label>
+                                <label><input type="radio" name="order-payment" value="parcelas" /> Parcelas</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row order-signal-row hidden-field">
+                        <div class="field">
+                            <label>Valor do sinal (R$)</label>
+                            <input type="number" class="order-signal-amount" min="0" step="0.01" placeholder="0,00" />
+                        </div>
+                        <div class="field">
+                            <label>Data do restante</label>
+                            <input type="date" class="order-signal-date" />
+                        </div>
+                    </div>
+
+                    <div class="row order-installments-row hidden-field">
+                        <div class="field">
+                            <label>Quantidade de parcelas</label>
+                            <input type="number" class="order-installments-qty" min="1" value="1" />
+                        </div>
+                        <div class="field">
+                            <label>Valor das parcelas (R$)</label>
+                            <input type="number" class="order-installment-value" min="0" step="0.01" placeholder="0,00" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="field">
+                            <label><input type="checkbox" class="order-paid" /> Pedido já pago</label>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="field">
+                            <label>Anotações</label>
+                            <textarea class="order-notes" rows="5" placeholder="Observações do pedido"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="button-row" style="margin-top:12px;">
+                    <button type="button" class="save-order">Salvar Pedido</button>
+                    <button type="button" class="secondary cancel-order">Cancelar</button>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top:20px;">
+                <div class="row">
+                    <div class="field">
+                        <label>Pesquisar pedidos</label>
+                        <input type="text" id="orders-search" placeholder="Procure por código, cliente ou produto" />
+                    </div>
+                    <div class="field">
+                        <label>Pedidos</label>
+                        <div id="order-count" class="inventory-count">0</div>
+                    </div>
+                </div>
+
+                <div class="inventory-table-container">
+                    <table class="inventory-table">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Data</th>
+                                <th>Cliente</th>
+                                <th>Produto</th>
+                                <th>Qtd</th>
+                                <th>Total</th>
+                                <th>Desconto</th>
+                                <th>Frete</th>
+                                <th>Taxas</th>
+                                <th>Pagamento</th>
+                                <th>Pago</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="order-list">
+                            <tr class="inventory-empty"><td colspan="12">Nenhum pedido cadastrado.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

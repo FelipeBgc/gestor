@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <button class="back-button" onclick="history.back()" aria-label="Voltar para página anterior">←</button>
+    <div class="container">
+        <h1>Agenda</h1>
+        <div class="card agenda-grid">
+            <div class="agenda-calendar">
+                <div class="calendar-header">
+                    <button type="button" class="calendar-prev">←</button>
+                    <div class="calendar-title">Maio 2026</div>
+                    <button type="button" class="calendar-next">→</button>
+                </div>
+                <div class="calendar-weekdays">
+                    <div>Dom</div>
+                    <div>Seg</div>
+                    <div>Ter</div>
+                    <div>Qua</div>
+                    <div>Qui</div>
+                    <div>Sex</div>
+                    <div>Sáb</div>
+                </div>
+                <div class="calendar-grid" id="calendar-grid"></div>
+                <div class="calendar-legend">
+                    <span><strong class="legend-event"></strong> Evento</span>
+                    <span><strong class="legend-payment"></strong> Pagamento devido</span>
+                </div>
+            </div>
+            <div class="agenda-details">
+                <div class="card">
+                    <h2>Adicionar evento</h2>
+                    <div class="field">
+                        <label>Data selecionada</label>
+                        <input type="text" class="agenda-selected-date" readonly />
+                    </div>
+                    <div class="field">
+                        <label>Anotações</label>
+                        <textarea class="agenda-notes" rows="6" placeholder="Descreva o evento..."></textarea>
+                    </div>
+                    <div class="button-row">
+                        <button type="button" class="save-agenda-event">Salvar evento</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>Eventos do dia</h2>
+                    <div class="agenda-events-list"></div>
+                </div>
+                <div class="card">
+                    <h2>Vencimentos</h2>
+                    <div class="agenda-payment-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

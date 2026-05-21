@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão da Loja</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu">☰</button>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span>Menu</span>
+            <button class="sidebar-close" id="sidebar-close" aria-label="Fechar menu">×</button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="gestor.html" class="nav-link active">Início</a>
+            <a href="cadastrar.html" class="nav-link">Cadastrar produto</a>
+            <a href="estoque.html" class="nav-link">Estoque</a>
+            <a href="clientes.html" class="nav-link">Clientes</a>
+            <a href="pedidos.html" class="nav-link">Pedidos</a>
+            <a href="agenda.html" class="nav-link">Agenda</a>
+            <a href="financas.html" class="nav-link">Finanças</a>
+        </nav>
+    </aside>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    <div class="container">
+        <h1>Gestão da Loja</h1>
+        <div class="card">
+            <h2>Escolha uma opção</h2>
+            <p>Use páginas separadas para cadastrar produtos e consultar o estoque.</p>
+            <div class="button-row">
+                <button type="button" onclick="location.href='cadastrar.html'">Cadastrar produto</button>
+                <button type="button" class="secondary" onclick="location.href='estoque.html'">Ver estoque</button>
+                <button type="button" class="secondary" onclick="location.href='agenda.html'">Agenda</button>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

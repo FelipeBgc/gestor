@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estoque</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <button class="back-button" onclick="history.back()" aria-label="Voltar para página anterior">←</button>
+    <div class="container">
+        <h1>Estoque</h1>
+        <div class="card inventory-list">
+            <div class="row">
+                <div class="field">
+                    <label>Buscar no estoque</label>
+                    <input type="text" id="inventory-search" placeholder="Procure por produto, detalhes ou tamanho" />
+                </div>
+                <div class="field">
+                    <label>Itens no estoque</label>
+                    <div id="inventory-count" class="inventory-count">0</div>
+                </div>
+            </div>
+
+            <div class="inventory-table-container">
+                <table class="inventory-table">
+                    <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th>Detalhes</th>
+                            <th>Tamanho</th>
+                            <th>Quantidade</th>
+                            <th>Valor total</th>
+                            <th>Preço venda</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventory-items">
+                        <tr class="inventory-empty">
+                            <td colspan="6">Nenhuma peça adicionada ao estoque ainda.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

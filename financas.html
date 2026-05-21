@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finanças e Pagamentos</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <button class="back-button" onclick="history.back()" aria-label="Voltar para página anterior">←</button>
+    <div class="container">
+        <h1>Finanças e Pagamentos</h1>
+        <div class="card finance-card">
+            <div class="finance-filter-row">
+                <div class="field">
+                    <label>Período</label>
+                    <select id="finance-period">
+                        <option value="today">Hoje</option>
+                        <option value="current-month" selected>Mês atual</option>
+                        <option value="last-month">Mês passado</option>
+                        <option value="last-3-months">Últimos 3 meses</option>
+                        <option value="custom">Selecione mês específico</option>
+                    </select>
+                </div>
+                <div class="field finance-month-field hidden-field">
+                    <label>Escolha o mês</label>
+                    <input type="month" class="finance-month-picker" />
+                </div>
+            </div>
+
+            <h2 class="finance-section-title">Receita</h2>
+            <div class="finance-summary-grid">
+                <button type="button" class="finance-summary-item finance-received-btn active" data-category="recebido">
+                    <strong>Recebido</strong>
+                    <span id="finance-received-value">R$ 0,00</span>
+                </button>
+                <button type="button" class="finance-summary-item finance-receivable-btn" data-category="receber">
+                    <strong>A receber</strong>
+                    <span id="finance-receivable-value">R$ 0,00</span>
+                </button>
+                <button type="button" class="finance-summary-item finance-overdue-btn" data-category="atraso">
+                    <strong>Em atraso</strong>
+                    <span id="finance-overdue-value">R$ 0,00</span>
+                </button>
+            </div>
+
+            <div class="finance-detail-section">
+                <div class="finance-detail-header">
+                    <h2 class="finance-category-title">Recebido</h2>
+                    <span class="finance-detail-info">Clique nos cards acima para ver os pedidos.</span>
+                </div>
+                <div class="finance-detail-list"></div>
+            </div>
+
+            <h2 class="finance-section-title">Investimento</h2>
+            <div class="finance-summary-grid finance-investment-grid">
+                <div class="finance-summary-item finance-investment-item">
+                    <strong>Investimento total</strong>
+                    <span id="finance-investment-value">R$ 0,00</span>
+                </div>
+            </div>
+
+            <div class="finance-total-row">
+                <div>
+                    <span>Receita total</span>
+                    <strong class="finance-total-value">R$ 0,00</strong>
+                </div>
+                <div>
+                    <span>Caixa atual</span>
+                    <strong id="finance-cash-value">R$ 0,00</strong>
+                </div>
+            </div>
+
+            <div class="finance-chart-card">
+                <div class="finance-chart-header">
+                    <h2>Gráfico de finanças</h2>
+                    <p>Comparativo entre Receita e Investimento</p>
+                </div>
+                <canvas id="finance-chart" width="900" height="380"></canvas>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
