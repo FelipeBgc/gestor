@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pedidos</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="css/pedidos.css">
 </head>
 <body>
     <button class="back-button" onclick="history.back()" aria-label="Voltar para página anterior">←</button>
+    <button class="logout-button" id="logout-button" aria-label="Sair">Sair</button>
+    <span class="logged-user">Loja: <strong id="shop-name"></strong></span>
     <div class="container">
         <h1>Pedidos</h1>
 
@@ -84,7 +86,7 @@
                     <div class="row">
                         <div class="field">
                             <label>Opção</label>
-                            <div style="display:flex; gap:16px; flex-wrap: wrap;">
+                            <div style="display:flex; gap:16px;">
                                 <label><input type="radio" name="order-payment" value="avista" checked /> À vista</label>
                                 <label><input type="radio" name="order-payment" value="sinal" /> Sinal</label>
                                 <label><input type="radio" name="order-payment" value="parcelas" /> Parcelas</label>
@@ -173,6 +175,6 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script type="module" src="js/pedidos.js"></script>
 </body>
 </html>

@@ -119,6 +119,7 @@ p {
 label {
     font-weight: 700;
     margin-bottom: 10px;
+    margin-top: 12px;
     color: var(--text);
 }
 
@@ -173,7 +174,6 @@ textarea {
     align-items: center;
     flex-wrap: wrap;
     gap: 14px;
-    margin-top: 28px;
 }
 
 .tabs-row {
@@ -874,5 +874,190 @@ button:hover {
     .sidebar-nav .nav-link {
         padding: 14px 16px;
     }
+}
+
+@media screen and (min-width: 389px) and (max-width: 670px) {
+    body {
+        background: linear-gradient(180deg, #f8fbff 0%, #f0f4ff 100%);
+    }
+
+    .container {
+        width: min(100%, calc(100% - 28px));
+        padding: 20px 0 32px;
+    }
+
+    h1,
+    h2 {
+        text-align: center;
+    }
+
+    .container h1 {
+        position: relative;
+        top: 3rem;
+    }
+
+    .card {
+        padding: 22px;
+        margin: 5rem auto 22px;
+        max-width: 100%;
+    }
+
+    .order-card,
+    .finance-chart-card,
+    .finance-card,
+    .agenda-details,
+    .inventory-list {
+        width: 100%;
+    }
+
+    .order-card .row,
+    .inventory-list .row,
+    .finance-filter-row,
+    .finance-total-row,
+    .finance-chart-header,
+    .finance-detail-header,
+    .calendar-header,
+    .agenda-event-item,
+    .agenda-payment-item {
+        display: flex;
+        gap: 16px;
+        align-items: stretch;
+    }
+
+    .order-card .field,
+    .inventory-list .field,
+    .field,
+    .finance-summary-item,
+    .finance-detail-item,
+    .agenda-events-list,
+    .agenda-payment-list {
+        min-width: 100%;
+        width: 100%;
+    }
+
+    input,
+    select,
+    textarea {
+        padding: 14px 16px;
+        width: 100%;
+    }
+
+    .button-row,
+    .tabs-row {
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        width: 100%;
+    }
+
+    .button-row button,
+    .tab-button,
+    .sidebar-nav .nav-link {
+        width: 100%;
+        max-width: 100%;
+        text-align: center;
+    }
+
+    .inventory-table-container {
+        overflow-x: auto;
+        margin: 0 auto;
+        width: 100%;
+    }
+
+    .inventory-table {
+        min-width: 620px;
+        width: 100%;
+    }
+
+    .inventory-table th,
+    .inventory-table td {
+        padding: 12px 14px;
+    }
+
+    .finance-summary-grid,
+    .agenda-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .finance-total-row {
+        justify-content: center;
+    }
+
+    .finance-total-row div {
+        width: 100%;
+    }
+
+    .calendar-header,
+    .finance-chart-header,
+    .finance-detail-header {
+        align-items: stretch;
+    }
+
+    .calendar-weekdays,
+    .calendar-grid {
+        gap: 10px;
+    }
+
+    .calendar-weekdays div {
+        font-size: 0.85rem;
+    }
+
+    .calendar-day {
+        min-height: 82px;
+        padding: 12px;
+    }
+
+    .agenda-event-item,
+    .agenda-payment-item {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .agenda-event-item button {
+        align-self: flex-end;
+    }
+
+    .sidebar {
+        width: 100%;
+        padding: 22px 18px;
+    }
+}
+
+.logout-button {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 1100;
+    background: #ef4444;
+    color: #ffffff;
+    border: none;
+    border-radius: 16px;
+    padding: 12px 18px;
+    font-weight: 700;
+    cursor: pointer;
+    margin: 0;
+}
+.logout-button:hover {
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+}
+
+.logged-user {
+    position: absolute;
+    top: 30px;
+    right: 138px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #334155;
+    font-size: 0.95rem;
+    font-weight: 700;
+    z-index: 1100;
+    max-width: calc(100% - 220px);
+    text-align: right;
+}
+.logged-user strong {
+    color: #111827;
 }
 

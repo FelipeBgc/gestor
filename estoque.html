@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Estoque</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="css/estoque.css">
 </head>
 <body>
     <button class="back-button" onclick="history.back()" aria-label="Voltar para página anterior">←</button>
+    <button class="logout-button" id="logout-button" aria-label="Sair">Sair</button>
+    <span class="logged-user">Loja: <strong id="shop-name"></strong></span>
     <div class="container">
         <h1>Estoque</h1>
         <div class="card inventory-list">
@@ -21,6 +23,8 @@
                     <div id="inventory-count" class="inventory-count">0</div>
                 </div>
             </div>
+
+            <div id="inventory-warning" class="inventory-warning" aria-live="polite"></div>
 
             <div class="inventory-table-container">
                 <table class="inventory-table">
@@ -44,6 +48,6 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script type="module" src="js/estoque.js"></script>
 </body>
 </html>

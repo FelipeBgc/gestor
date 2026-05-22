@@ -4,81 +4,120 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cadastrar Produto</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="css/cadastrar.css">
 </head>
 <body>
     <button class="back-button" onclick="history.back()" aria-label="Voltar para página anterior">←</button>
+    <button class="logout-button" id="logout-button" aria-label="Sair">Sair</button>
+    <span class="logged-user">Loja: <strong id="shop-name"></strong></span>
     <div class="container">
         <h1>Cadastrar Produto</h1>
+        
         <div class="card order-card">
-            <div class="row">
-                <div class="field">
-                    <label>Nome do produto</label>
-                    <input type="text" class="order-name" placeholder="Ex: Camisa vermelha" />
+            <div class="product-mode-selector">
+                <p class="selector-label">Como você deseja adicionar?</p>
+                <div class="mode-buttons">
+                    <button type="button" class="mode-btn new-product-mode-btn">➕ Novo Produto</button>
+                    <button type="button" class="mode-btn existing-product-mode-btn">📦 Produto Existente</button>
                 </div>
             </div>
 
-            <div class="row">
-                <div class="field">
-                    <label>Detalhes do produto (opcional)</label>
-                    <textarea class="product-details" rows="7" placeholder="Ex: cor, modelo, observações"></textarea>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="field">
-                    <label>Tamanho (opcional)</label>
-                    <input type="text" class="product-size" placeholder="Ex: P, M, G, 42" />
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="field">
-                    <label>Preço unitário (R$)</label>
-                    <input type="number" class="unit-price" min="0" step="0.01" placeholder="0,00" />
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="field">
-                    <label>Quantidade</label>
-                    <input type="number" class="quantity" min="1" step="1" value="1" />
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="field">
-                    <label>Valor total</label>
-                    <input type="text" class="total-value" readonly value="R$ 0,00" />
-                </div>
-            </div>
-
-            <div class="value-box">
-                <strong>Custo e Lucro</strong>
+            <div id="new-product-form" class="product-form-section hidden-section">
                 <div class="row">
                     <div class="field">
-                        <label>Custo por unidade (R$)</label>
-                        <input type="number" class="cost-price" min="0" step="0.01" placeholder="0,00" />
+                        <label>Nome do produto</label>
+                        <input type="text" class="order-name" placeholder="Ex: Camisa vermelha" />
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="field">
-                        <label>Margem de lucro (%)</label>
-                        <input type="number" class="profit-margin" min="0" step="0.1" placeholder="0" />
+                        <label>Detalhes do produto (opcional)</label>
+                        <textarea class="product-details" rows="7" placeholder="Ex: cor, modelo, observações"></textarea>
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="field">
-                        <label>Preço de venda sugerido (R$)</label>
-                        <input type="text" class="selling-price" readonly value="R$ 0,00" />
+                        <label>Tamanho (opcional)</label>
+                        <input type="text" class="product-size" placeholder="Ex: P, M, G, 42" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="field">
+                        <label>Preço unitário (R$)</label>
+                        <input type="number" class="unit-price" min="0" step="0.01" placeholder="0,00" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="field">
+                        <label>Quantidade</label>
+                        <input type="number" class="quantity" min="1" step="1" value="1" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="field">
+                        <label>Valor total</label>
+                        <input type="text" class="total-value" readonly value="R$ 0,00" />
+                    </div>
+                </div>
+
+                <div class="value-box">
+                    <strong>Custo e Lucro</strong>
+                    <div class="row">
+                        <div class="field">
+                            <label>Custo por unidade (R$)</label>
+                            <input type="number" class="cost-price" min="0" step="0.01" placeholder="0,00" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="field">
+                            <label>Margem de lucro (%)</label>
+                            <input type="number" class="profit-margin" min="0" step="0.1" placeholder="0" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="field">
+                            <label>Preço de venda sugerido (R$)</label>
+                            <input type="text" class="selling-price" readonly value="R$ 0,00" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="existing-product-form" class="product-form-section hidden-section">
+                <div class="existing-product-selector">
+                    <label>Selecione o produto</label>
+                    <div id="existing-product-list" class="existing-products-list"></div>
+                </div>
+
+                <div id="selected-product-info" class="selected-product-info hidden-section">
+                    <div class="modal-actions">
+                        <button type="button" class="secondary select-other-btn">Selecionar outro produto</button>
+                    </div>
+                    <div class="product-info-display">
+                        <p><strong>Produto:</strong> <span id="info-product-name"></span></p>
+                        <p><strong>Detalhes:</strong> <span id="info-product-details"></span></p>
+                        <p><strong>Tamanho:</strong> <span id="info-product-size"></span></p>
+                        <p><strong>Quantidade atual:</strong> <span id="info-product-qty"></span></p>
+                    </div>
+
+                    <div class="row">
+                        <div class="field">
+                            <label>Quantas unidades deseja adicionar?</label>
+                            <input type="number" class="existing-product-quantity" min="1" step="1" value="1" />
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div class="button-row">
-                <button type="button" class="add-stock">Adicionar peça no estoque</button>
+                <button type="button" class="add-stock">Adicionar ao estoque</button>
             </div>
             <div class="button-row">
                 <button type="button" class="secondary" onclick="location.href='estoque.html'">Ver estoque</button>
@@ -86,6 +125,6 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script type="module" src="js/cadastrar.js"></script>
 </body>
 </html>

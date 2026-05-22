@@ -4,17 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestão da Loja</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="css/gestor.css">
 </head>
 <body>
     <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu">☰</button>
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <span>Menu</span>
+            <span class="logged-user">Loja: <strong id="shop-name"></strong></span>
+            <button class="logout-button" id="logout-button" aria-label="Sair">Sair</button>
             <button class="sidebar-close" id="sidebar-close" aria-label="Fechar menu">×</button>
         </div>
         <nav class="sidebar-nav">
             <a href="gestor.html" class="nav-link active">Início</a>
+            <a href="perfil.html" class="nav-link">Perfil</a>
             <a href="cadastrar.html" class="nav-link">Cadastrar produto</a>
             <a href="estoque.html" class="nav-link">Estoque</a>
             <a href="clientes.html" class="nav-link">Clientes</a>
@@ -27,15 +30,20 @@
     <div class="container">
         <h1>Gestão da Loja</h1>
         <div class="card">
-            <h2>Escolha uma opção</h2>
-            <p>Use páginas separadas para cadastrar produtos e consultar o estoque.</p>
-            <div class="button-row">
-                <button type="button" onclick="location.href='cadastrar.html'">Cadastrar produto</button>
-                <button type="button" class="secondary" onclick="location.href='estoque.html'">Ver estoque</button>
-                <button type="button" class="secondary" onclick="location.href='agenda.html'">Agenda</button>
+            <h2>Atalhos</h2>
+            <p>Abra rapidamente cada página principal do sistema.</p>
+            <div class="shortcut-grid">
+                <button type="button" class="shortcut-button" onclick="location.href='gestor.html'"><span class="shortcut-icon">🏠</span>Início</button>
+                <button type="button" class="shortcut-button" onclick="location.href='perfil.html'"><span class="shortcut-icon">👤</span>Perfil</button>
+                <button type="button" class="shortcut-button" onclick="location.href='cadastrar.html'"><span class="shortcut-icon">🛒</span>Cadastrar produto</button>
+                <button type="button" class="shortcut-button" onclick="location.href='estoque.html'"><span class="shortcut-icon">📦</span>Estoque</button>
+                <button type="button" class="shortcut-button" onclick="location.href='clientes.html'"><span class="shortcut-icon">👥</span>Clientes</button>
+                <button type="button" class="shortcut-button" onclick="location.href='pedidos.html'"><span class="shortcut-icon">🧾</span>Pedidos</button>
+                <button type="button" class="shortcut-button" onclick="location.href='agenda.html'"><span class="shortcut-icon">📅</span>Agenda</button>
+                <button type="button" class="shortcut-button" onclick="location.href='financas.html'"><span class="shortcut-icon">💰</span>Finanças</button>
             </div>
         </div>
     </div>
-    <script src="script.js"></script>
+    <script type="module" src="js/gestor.js"></script>
 </body>
 </html>

@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finanças e Pagamentos</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="css/financas.css">
 </head>
 <body>
     <button class="back-button" onclick="history.back()" aria-label="Voltar para página anterior">←</button>
+    <button class="logout-button" id="logout-button" aria-label="Sair">Sair</button>
+    <span class="logged-user">Loja: <strong id="shop-name"></strong></span>
     <div class="container">
         <h1>Finanças e Pagamentos</h1>
         <div class="card finance-card">
@@ -55,7 +57,7 @@
             <h2 class="finance-section-title">Investimento</h2>
             <div class="finance-summary-grid finance-investment-grid">
                 <div class="finance-summary-item finance-investment-item">
-                    <strong>Investimento total</strong>
+                    <strong>Investimento</strong>
                     <span id="finance-investment-value">R$ 0,00</span>
                 </div>
             </div>
@@ -76,10 +78,10 @@
                     <h2>Gráfico de finanças</h2>
                     <p>Comparativo entre Receita e Investimento</p>
                 </div>
-                <canvas id="finance-chart" width="900" height="380"></canvas>
+                <canvas id="finance-chart" width="1100" height="450"></canvas>
             </div>
         </div>
     </div>
-    <script src="script.js"></script>
+    <script type="module" src="js/financas.js"></script>
 </body>
 </html>

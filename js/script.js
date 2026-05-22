@@ -2,6 +2,7 @@ const inventoryKey = 'gestorInventory';
 const inventorySearch = document.getElementById('inventory-search');
 const inventoryItems = document.getElementById('inventory-items');
 const inventoryCount = document.getElementById('inventory-count');
+const inventoryWarning = document.getElementById('inventory-warning');
 const addStockBtn = document.querySelector('.add-stock');
 const orderNameInput = document.querySelector('.order-name');
 const detailsInput = document.querySelector('.product-details');
@@ -90,6 +91,58 @@ const orderFormTitle = document.querySelector('#order-form h2');
 let editingOrderCode = null;
 let activeFinanceCategory = 'recebido';
 
+const authKey = 'gestorLoggedIn';
+const currentUserKey = 'gestorCurrentUser';
+const currentShopKey = 'gestorCurrentShop';
+const loginPage = 'login.html';
+
+const isLoggedIn = () => localStorage.getItem(authKey) === 'true';
+const currentPage = window.location.pathname.split('/').pop();
+
+if (currentPage !== loginPage && !isLoggedIn()) {
+    window.location.replace(loginPage);
+}
+
+if (currentPage === loginPage && isLoggedIn()) {
+    window.location.replace('gestor.html');
+}
+
+function setupLogoutButtons() {
+    const logoutButtons = document.querySelectorAll('.logout-button');
+    logoutButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            localStorage.removeItem(authKey);
+            localStorage.removeItem(currentUserKey);
+            localStorage.removeItem(currentShopKey);
+            window.location.replace(loginPage);
+        });
+    });
+}
+
+function displayLoggedUser() {
+    const userName = localStorage.getItem(currentUserKey);
+    const shopName = localStorage.getItem(currentShopKey);
+    const loggedUserElements = document.querySelectorAll('#logged-user-name');
+    const shopNameElements = document.querySelectorAll('#shop-name');
+
+    loggedUserElements.forEach(el => {
+        if (userName) {
+            el.textContent = userName;
+        }
+    });
+
+    shopNameElements.forEach(el => {
+        if (shopName) {
+            el.textContent = shopName;
+        }
+    });
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    setupLogoutButtons();
+    displayLoggedUser();
+});
+
 function getInventoryData() {
     try {
         return JSON.parse(localStorage.getItem(inventoryKey) || '[]');
@@ -100,6 +153,20 @@ function getInventoryData() {
 
 function setInventoryData(data) {
     localStorage.setItem(inventoryKey, JSON.stringify(data));
+}
+
+function checkInventoryWarning() {
+    if (!inventoryWarning) return;
+
+    const inventoryData = getInventoryData();
+    const lowStockItems = inventoryData.filter(item => parseInt(item.quantity, 10) === 1);
+
+    if (lowStockItems.length > 0) {
+        inventoryWarning.textContent = `Atenção: há ${lowStockItems.length} peça${lowStockItems.length === 1 ? '' : 's'} com apenas 1 unidade no estoque.`;
+        inventoryWarning.classList.add('show');
+    } else {
+        inventoryWarning.classList.remove('show');
+    }
 }
 
 function formatMoney(value) {
@@ -157,6 +224,10 @@ function renderInventory(filter = '') {
     } else {
         filteredItems.forEach(item => {
             const row = document.createElement('tr');
+            const lowStock = parseInt(item.quantity, 10) === 1;
+            if (lowStock) {
+                row.classList.add('low-stock');
+            }
             row.innerHTML = `
                 <td data-label="Produto">${item.product}</td>
                 <td data-label="Detalhes">${item.details || '—'}</td>
@@ -170,9 +241,157 @@ function renderInventory(filter = '') {
     }
 
     inventoryCount.textContent = filteredItems.length;
+    checkInventoryWarning();
+}
+
+// Product Mode Management
+let currentProductMode = null; // 'new' or 'existing', null until user selects
+let selectedExistingProductIndex = null;
+
+function initializeProductMode() {
+    currentProductMode = null;
+    selectedExistingProductIndex = null;
+    
+    const newForm = document.getElementById('new-product-form');
+    const existingForm = document.getElementById('existing-product-form');
+    const newBtn = document.querySelector('.new-product-mode-btn');
+    const existingBtn = document.querySelector('.existing-product-mode-btn');
+    
+    // Hide both forms
+    if (newForm) newForm.classList.add('hidden-section');
+    if (existingForm) existingForm.classList.add('hidden-section');
+    
+    // Remove active state from both buttons
+    if (newBtn) newBtn.classList.remove('active');
+    if (existingBtn) existingBtn.classList.remove('active');
+}
+
+function switchToNewProduct() {
+    currentProductMode = 'new';
+    selectedExistingProductIndex = null;
+    
+    const newForm = document.getElementById('new-product-form');
+    const existingForm = document.getElementById('existing-product-form');
+    const newBtn = document.querySelector('.new-product-mode-btn');
+    const existingBtn = document.querySelector('.existing-product-mode-btn');
+    
+    if (newForm) newForm.classList.remove('hidden-section');
+    if (existingForm) existingForm.classList.add('hidden-section');
+    if (newBtn) newBtn.classList.add('active');
+    if (existingBtn) existingBtn.classList.remove('active');
+    
+    resetForm();
+}
+
+function switchToExistingProduct() {
+    currentProductMode = 'existing';
+    selectedExistingProductIndex = null;
+    
+    const newForm = document.getElementById('new-product-form');
+    const existingForm = document.getElementById('existing-product-form');
+    const newBtn = document.querySelector('.new-product-mode-btn');
+    const existingBtn = document.querySelector('.existing-product-mode-btn');
+    const selectedInfo = document.getElementById('selected-product-info');
+    
+    if (newForm) newForm.classList.add('hidden-section');
+    if (existingForm) existingForm.classList.remove('hidden-section');
+    if (newBtn) newBtn.classList.remove('active');
+    if (existingBtn) existingBtn.classList.add('active');
+    if (selectedInfo) selectedInfo.classList.add('hidden-section');
+    
+    // Ensure the selector label and list are visible
+    const existingSelector = document.querySelector('.existing-product-selector');
+    if (existingSelector) existingSelector.classList.remove('hidden-section');
+
+    populateExistingProductList();
+}
+
+function populateExistingProductList() {
+    const productList = document.getElementById('existing-product-list');
+    if (!productList) return;
+    
+    const inventoryData = getInventoryData();
+    
+    if (inventoryData.length === 0) {
+        productList.innerHTML = '<p class="no-products-msg">Nenhum produto no estoque ainda.</p>';
+        return;
+    }
+    
+    productList.innerHTML = '';
+    inventoryData.forEach((item, index) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'existing-product-btn compact';
+        btn.innerHTML = `
+            <div class="compact-line"><strong>${item.product}</strong></div>
+            ${item.details ? `<div class="compact-sub"><small>${item.details}</small></div>` : ''}
+            ${item.size ? `<div class="compact-sub"><small>Tamanho: ${item.size}</small></div>` : ''}
+        `;
+        btn.addEventListener('click', () => selectExistingProduct(index));
+        productList.appendChild(btn);
+    });
+}
+
+function selectExistingProduct(productIndex) {
+    const inventoryData = getInventoryData();
+    if (productIndex < 0 || productIndex >= inventoryData.length) {
+        alert('Produto não encontrado.');
+        return;
+    }
+    
+    const product = inventoryData[productIndex];
+    selectedExistingProductIndex = productIndex;
+    
+    // Display product info
+    document.getElementById('info-product-name').textContent = product.product || '—';
+    document.getElementById('info-product-details').textContent = product.details || '—';
+    document.getElementById('info-product-size').textContent = product.size || '—';
+    document.getElementById('info-product-qty').textContent = product.quantity || 0;
+    
+    // Reset quantity input for adding units
+    const qtyInput = document.querySelector('.existing-product-quantity');
+    if (qtyInput) qtyInput.value = 1;
+    
+    // Show selected product info
+    const selectedInfo = document.getElementById('selected-product-info');
+    if (selectedInfo) selectedInfo.classList.remove('hidden-section');
+    // Hide the product selector (label + list) and mode buttons to show only selected info
+    const productListEl = document.getElementById('existing-product-list');
+    if (productListEl) productListEl.classList.add('hidden-section');
+    const existingSelector = document.querySelector('.existing-product-selector');
+    if (existingSelector) existingSelector.classList.add('hidden-section');
+    const modeButtonsEl = document.querySelector('.mode-buttons');
+    if (modeButtonsEl) modeButtonsEl.classList.add('hidden-section');
+    // Also hide the whole mode selector container
+    const modeSelector = document.querySelector('.product-mode-selector');
+    if (modeSelector) modeSelector.classList.add('hidden-section');
+}
+
+function selectAnotherProduct() {
+    // Clear selection and show the list again
+    selectedExistingProductIndex = null;
+    const selectedInfo = document.getElementById('selected-product-info');
+    if (selectedInfo) selectedInfo.classList.add('hidden-section');
+    const productListEl = document.getElementById('existing-product-list');
+    if (productListEl) productListEl.classList.remove('hidden-section');
+    const modeButtonsEl = document.querySelector('.mode-buttons');
+    if (modeButtonsEl) modeButtonsEl.classList.remove('hidden-section');
+    const existingSelector = document.querySelector('.existing-product-selector');
+    if (existingSelector) existingSelector.classList.remove('hidden-section');
+    // Show the product-mode-selector again
+    const modeSelector = document.querySelector('.product-mode-selector');
+    if (modeSelector) modeSelector.classList.remove('hidden-section');
 }
 
 function addStock() {
+    if (currentProductMode === 'new') {
+        addNewProduct();
+    } else if (currentProductMode === 'existing') {
+        addUnitsToExistingProduct();
+    }
+}
+
+function addNewProduct() {
     if (!orderNameInput) return;
 
     const product = orderNameInput.value.trim() || 'Produto não informado';
@@ -183,6 +402,25 @@ function addStock() {
     const sellingPrice = (parseFloat(costPriceInput.value) || 0) * (1 + (parseFloat(profitMarginInput.value) || 0) / 100);
 
     const inventoryData = getInventoryData();
+    
+    // Verificar duplicatas por nome/tamanho
+    const sameNameItems = inventoryData.filter(item => item.product.toLowerCase() === product.toLowerCase());
+    if (sameNameItems.length > 0) {
+        // Se já existe produto com mesmo nome, exigir que o campo tamanho seja informado
+        if (!size) {
+            alert('❌ Erro: já existe produto com esse nome. Informe o Tamanho para salvar como nova variação.');
+            return;
+        }
+
+        // Se existe item com mesmo nome e mesmo tamanho, não permitir salvar
+        const sameNameSameSize = sameNameItems.some(item => (item.size || '').toLowerCase() === size.toLowerCase());
+        if (sameNameSameSize) {
+            alert(`❌ Erro: já existe um produto com o mesmo nome e tamanho ("${product}" - "${size}"). Use a opção "Produto Existente" para adicionar unidades.`);
+            return;
+        }
+        // Caso exista mesmo nome mas tamanhos diferentes, permite salvar (variação)
+    }
+
     inventoryData.push({
         product,
         details,
@@ -196,7 +434,31 @@ function addStock() {
     renderInventory(inventorySearch ? inventorySearch.value : '');
     populateProductOptions();
     resetForm();
-    alert('Produto adicionado ao estoque.');
+    alert('✅ Produto adicionado ao estoque com sucesso!');
+}
+
+function addUnitsToExistingProduct() {
+    if (selectedExistingProductIndex === null) {
+        alert('Selecione um produto primeiro.');
+        return;
+    }
+    
+    const quantityInput = document.querySelector('.existing-product-quantity');
+    const quantity = parseInt(quantityInput.value, 10) || 0;
+    
+    if (quantity <= 0) {
+        alert('Informe uma quantidade válida.');
+        return;
+    }
+
+    const inventoryData = getInventoryData();
+    inventoryData[selectedExistingProductIndex].quantity += quantity;
+
+    setInventoryData(inventoryData);
+    renderInventory(inventorySearch ? inventorySearch.value : '');
+    populateProductOptions();
+    switchToNewProduct();
+    alert(`${quantity} unidade(s) adicionada(s) ao estoque.`);
 }
 
 if (addStockBtn) {
@@ -204,6 +466,23 @@ if (addStockBtn) {
     [unitPriceInput, quantityInput, costPriceInput, profitMarginInput].forEach(input => {
         if (input) input.addEventListener('input', updateValues);
     });
+}
+
+// Mode selector buttons
+const newProductModeBtn = document.querySelector('.new-product-mode-btn');
+const existingProductModeBtn = document.querySelector('.existing-product-mode-btn');
+const selectOtherBtn = document.querySelector('.select-other-btn');
+
+if (newProductModeBtn) {
+    newProductModeBtn.addEventListener('click', switchToNewProduct);
+}
+
+if (existingProductModeBtn) {
+    existingProductModeBtn.addEventListener('click', switchToExistingProduct);
+}
+
+if (selectOtherBtn) {
+    selectOtherBtn.addEventListener('click', selectAnotherProduct);
 }
 
 if (menuToggle) {
@@ -444,7 +723,7 @@ function getCashBalance() {
 function getFinanceChartData() {
     const totals = getFinanceTotals();
     return {
-        labels: ['Recebido', 'A receber', 'Em atraso', 'Investimento total'],
+        labels: ['Recebido', 'A receber', 'Em atraso', 'Investimento'],
         values: [totals.receivedTotal, totals.receivableTotal, totals.overdueTotal, getInvestmentTotal()],
         colors: ['#16a34a', '#f59e0b', '#ef4444', '#2563eb'],
     };
@@ -1069,3 +1348,8 @@ renderInventory(inventorySearch ? inventorySearch.value : '');
 renderClients(clientsSearch ? clientsSearch.value : '');
 renderOrders(ordersSearch ? ordersSearch.value : '');
 renderFinance();
+
+// Initialize product mode for cadastrar page
+if (currentPage === 'cadastrar.html') {
+    initializeProductMode();
+}

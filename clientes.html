@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Clientes</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="css/clientes.css">
 </head>
 <body>
     <button class="back-button" onclick="history.back()" aria-label="Voltar para página anterior">←</button>
+    <button class="logout-button" id="logout-button" aria-label="Sair">Sair</button>
+    <span class="logged-user">Loja: <strong id="shop-name"></strong></span>
     <div class="container">
         <h1>Clientes</h1>
 
@@ -129,6 +131,6 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script type="module" src="js/clientes.js"></script>
 </body>
 </html>

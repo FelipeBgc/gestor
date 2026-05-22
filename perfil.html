@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perfil</title>
+    <link rel="stylesheet" href="css/perfil.css">
+</head>
+<body>
+    <button class="back-button" onclick="history.back()" aria-label="Voltar para página anterior">←</button>
+    <button class="logout-button" id="logout-button" aria-label="Sair">Sair</button>
+    <span class="logged-user">Loja: <strong id="shop-name"></strong></span>
+    <div class="container">
+        <h1>Perfil</h1>
+        <div class="card">
+            <form id="profile-form">
+                <div class="row">
+                    <div class="field">
+                        <label for="profile-username">Nome do usuário</label>
+                        <input type="text" id="profile-username" required placeholder="Nome de login" />
+                    </div>
+                    <div class="field">
+                        <label for="profile-shop-name">Nome da loja</label>
+                        <input type="text" id="profile-shop-name" required placeholder="Nome da sua loja" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="field">
+                        <label for="profile-email">Email</label>
+                        <input type="email" id="profile-email" placeholder="seu@email.com" />
+                    </div>
+                    <div class="field">
+                        <label for="profile-phone">Telefone</label>
+                        <input type="tel" id="profile-phone" placeholder="(00) 00000-0000" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="field full-width">
+                        <label for="profile-address">Endereço</label>
+                        <textarea id="profile-address" rows="4" placeholder="Rua, número, bairro..."></textarea>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="field">
+                        <label for="profile-password">Nova senha</label>
+                        <input type="password" id="profile-password" placeholder="Deixe em branco para manter" />
+                    </div>
+                    <div class="field">
+                        <label for="profile-confirm-password">Confirmar senha</label>
+                        <input type="password" id="profile-confirm-password" placeholder="Confirme a nova senha" />
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button type="submit">Salvar perfil</button>
+                </div>
+                <div class="message" id="profile-message"></div>
+            </form>
+        </div>
+    </div>
+    <script type="module" src="js/perfil.js"></script>
+</body>
+</html>

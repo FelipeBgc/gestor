@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrar Usuário</title>
+    <link rel="stylesheet" href="css/register.css">
+</head>
+<body>
+    <div class="login-page">
+        <div class="login-card">
+            <h1>Registrar</h1>
+            <p>Crie seu usuário e o nome da loja para acessar o sistema.</p>
+            <form id="register-form">
+                <label for="new-username">Usuário</label>
+                <input type="text" id="new-username" placeholder="Digite um nome de usuário" required>
+                <label for="shop-name">Nome da loja</label>
+                <input type="text" id="shop-name" placeholder="Digite o nome da loja" required>
+                <label for="new-password">Senha</label>
+                <input type="password" id="new-password" placeholder="Digite uma senha" required>
+                <label for="confirm-password">Confirmar senha</label>
+                <input type="password" id="confirm-password" placeholder="Repita a senha" required>
+                <div id="register-message" class="login-message"></div>
+                <button type="submit">Registrar</button>
+            </form>
+            <p class="login-info">Já tem conta? <a href="login.html">Entrar</a></p>
+        </div>
+    </div>
+    <script type="module" src="js/register.js"></script>
+</body>
+</html>
