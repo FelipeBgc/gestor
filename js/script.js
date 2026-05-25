@@ -3,11 +3,6 @@ const inventorySearch = document.getElementById('inventory-search');
 const inventoryItems = document.getElementById('inventory-items');
 const inventoryCount = document.getElementById('inventory-count');
 const inventoryWarning = document.getElementById('inventory-warning');
-const batchPanel = document.getElementById('batch-panel');
-const batchPanelTitle = document.getElementById('batch-panel-title');
-const batchPanelSubtitle = document.getElementById('batch-panel-subtitle');
-const batchPanelContent = document.getElementById('batch-panel-content');
-const batchPanelClose = document.getElementById('batch-panel-close');
 const addStockBtn = document.querySelector('.add-stock');
 const orderNameInput = document.querySelector('.order-name');
 const detailsInput = document.querySelector('.product-details');
@@ -370,123 +365,28 @@ function renderInventory(filter = '') {
 }
 
 function hideBatchPanel() {
-    if (!batchPanel) return;
-    batchPanel.classList.remove('visible');
-    batchPanel.setAttribute('aria-hidden', 'true');
-}
-
-if (batchPanelClose) {
-    batchPanelClose.addEventListener('click', hideBatchPanel);
+    // Sem painel de lote ativo.
 }
 
 function showBatchSellingPrices(product, size, options = {}) {
     const inventoryData = getInventoryData();
     const batches = inventoryData
-        .map((item, index) => ({ ...item, batchIndex: index }))
         .filter(item => item.product === product && item.size === size && (parseInt(item.quantity, 10) || 0) > 0);
 
-    const totalQuantity = batches.reduce((sum, batch) => sum + (parseInt(batch.quantity, 10) || 0), 0);
     const header = `${product}${size ? ` (${size})` : ''}`;
 
-    if (!batchPanel) {
-        if (batches.length === 0) {
-            alert('Nenhum lote encontrado para este produto.');
-            return;
-        }
-
-        const lines = batches.map((batch, idx) => {
-            const costInfo = batch.costPrice ? ` / Custo ${formatMoney(batch.costPrice)}` : '';
-            const marginInfo = batch.profitMargin ? ` / Lucro ${batch.profitMargin}%` : '';
-            return `${idx + 1}. Qtd ${batch.quantity} — ${formatMoney(batch.sellingPrice || 0)}${costInfo}${marginInfo}`;
-        });
-
-        alert(`Preços de venda para ${header}:\n\n${lines.join('\n')}`);
-        return;
-    }
-
-    const allowDelete = !!options.allowDelete;
-
-    batchPanelTitle.textContent = header;
-    batchPanelSubtitle.textContent = `Total de ${batches.length} lote${batches.length === 1 ? '' : 's'} • ${totalQuantity} unidade${totalQuantity === 1 ? '' : 's'}`;
-
     if (batches.length === 0) {
-        batchPanelContent.innerHTML = '<p class="batch-empty">Nenhum lote encontrado para este produto.</p>';
-        batchPanel.classList.add('visible');
-        batchPanel.setAttribute('aria-hidden', 'false');
+        alert('Nenhum lote encontrado para este produto.');
         return;
     }
 
-    batchPanelContent.innerHTML = batches.map((batch, idx) => {
-        const detailLine = batch.details ? `<div class="batch-card-line"><span>Detalhes</span><strong>${batch.details}</strong></div>` : '';
-        const locationLine = batch.purchaseLocation ? `<div class="batch-card-line"><span>Comprado em</span><strong>${batch.purchaseLocation}</strong></div>` : '';
-        const costLine = batch.costPrice ? `<div class="batch-card-line"><span>Custo</span><strong>${formatMoney(batch.costPrice)}</strong></div>` : '';
-        const marginLine = batch.profitMargin ? `<div class="batch-card-line"><span>Margem</span><strong>${batch.profitMargin}%</strong></div>` : '';
-        const deleteButtonHtml = allowDelete ? `<button type="button" class="batch-delete-btn" data-batch-index="${batch.batchIndex}" data-batch-number="${idx + 1}" aria-label="Excluir lote ${idx + 1}">🗑️</button>` : '';
+    const lines = batches.map((batch, idx) => {
+        const costInfo = batch.costPrice ? ` / Custo ${formatMoney(batch.costPrice)}` : '';
+        const marginInfo = batch.profitMargin ? ` / Lucro ${batch.profitMargin}%` : '';
+        return `${idx + 1}. Qtd ${batch.quantity} — ${formatMoney(batch.sellingPrice || 0)}${costInfo}${marginInfo}`;
+    });
 
-        return `
-            <div class="batch-card">
-                <div class="batch-card-header">
-                    <span>Lote ${idx + 1}</span>
-                    <span>${batch.quantity} unidade${batch.quantity === 1 ? '' : 's'}</span>
-                    ${deleteButtonHtml}
-                </div>
-                ${detailLine}
-                ${locationLine}
-                <div class="batch-card-line"><span>Preço venda</span><strong>${formatMoney(batch.sellingPrice || 0)}</strong></div>
-                ${costLine}
-                ${marginLine}
-            </div>
-        `;
-    }).join('');
-
-    if (allowDelete) {
-        // add an "Excluir todos" control at the top of the panel
-        const deleteAllHtml = `<div class="batch-panel-actions"><button type="button" id="batch-delete-all" class="danger">Excluir todos</button></div>`;
-        batchPanelContent.insertAdjacentHTML('afterbegin', deleteAllHtml);
-    }
-
-    batchPanel.classList.add('visible');
-    batchPanel.setAttribute('aria-hidden', 'false');
-
-    if (allowDelete) {
-        // attach handlers for individual delete buttons
-        const deleteButtons = batchPanel.querySelectorAll('.batch-delete-btn');
-        deleteButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const batchIndex = parseInt(btn.getAttribute('data-batch-index'), 10);
-                const batchNumber = btn.getAttribute('data-batch-number');
-                const inventoryDataInner = getInventoryData();
-                const batchItem = inventoryDataInner[batchIndex];
-                if (!batchItem) return;
-                const productLabel = `${product}${size ? ` (${size})` : ''}`;
-                const confirmed = confirm(`Deseja excluir o lote ${batchNumber} de ${productLabel} (Qtd ${batchItem.quantity})?`);
-                if (!confirmed) return;
-                inventoryDataInner.splice(batchIndex, 1);
-                setInventoryData(inventoryDataInner);
-                hideBatchPanel();
-                renderInventory(inventorySearch ? inventorySearch.value : '');
-                populateProductOptions();
-                renderFinance();
-                alert(`✅ Lote ${batchNumber} removido do estoque.`);
-            });
-        });
-
-        const deleteAllBtn = batchPanel.querySelector('#batch-delete-all');
-        if (deleteAllBtn) {
-            deleteAllBtn.addEventListener('click', () => {
-                const productLabel = `${product}${size ? ` (${size})` : ''}`;
-                const confirmed = confirm(`Deseja excluir todos os lotes de ${productLabel}?`);
-                if (!confirmed) return;
-                const filteredData = getInventoryData().filter(item => !(item.product === product && item.size === size));
-                setInventoryData(filteredData);
-                hideBatchPanel();
-                renderInventory(inventorySearch ? inventorySearch.value : '');
-                populateProductOptions();
-                renderFinance();
-                alert('✅ Todos os lotes foram removidos do estoque.');
-            });
-        }
-    }
+    alert(`Preços de venda para ${header}:\n\n${lines.join('\n')}`);
 }
 
 function deleteGroupedInventoryItem(product, size) {
