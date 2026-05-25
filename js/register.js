@@ -22,15 +22,6 @@ function saveUsers(users) {
     localStorage.setItem(usersKey, JSON.stringify(users));
 }
 
-function ensureDefaultUser() {
-    const users = getUsers();
-    if (users.length === 0) {
-        users.push({ username: 'admin', password: 'admin123', shopName: 'Minha Loja' });
-        saveUsers(users);
-    }
-    return users;
-}
-
 if (localStorage.getItem(authKey) === 'true') {
     window.location.replace('gestor.html');
 }
@@ -52,7 +43,7 @@ registerForm?.addEventListener('submit', event => {
         return;
     }
 
-    const users = ensureDefaultUser();
+    const users = getUsers();
     const exists = users.some(user => user.username.toLowerCase() === username.toLowerCase());
 
     if (exists) {
