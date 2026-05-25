@@ -3,9 +3,16 @@ const inventorySearch = document.getElementById('inventory-search');
 const inventoryItems = document.getElementById('inventory-items');
 const inventoryCount = document.getElementById('inventory-count');
 const inventoryWarning = document.getElementById('inventory-warning');
+const batchPanel = document.getElementById('batch-panel');
+const batchPanelTitle = document.getElementById('batch-panel-title');
+const batchPanelSubtitle = document.getElementById('batch-panel-subtitle');
+const batchPanelContent = document.getElementById('batch-panel-content');
+const batchPanelClose = document.getElementById('batch-panel-close');
 const addStockBtn = document.querySelector('.add-stock');
 const orderNameInput = document.querySelector('.order-name');
 const detailsInput = document.querySelector('.product-details');
+const purchaseLocationInput = document.querySelector('.purchase-location');
+const existingPurchaseLocationInput = document.querySelector('.existing-purchase-location');
 const sizeInput = document.querySelector('.product-size');
 const unitPriceInput = document.querySelector('.unit-price');
 const quantityInput = document.querySelector('.quantity');
@@ -13,6 +20,9 @@ const totalValueInput = document.querySelector('.total-value');
 const costPriceInput = document.querySelector('.cost-price');
 const profitMarginInput = document.querySelector('.profit-margin');
 const sellingPriceInput = document.querySelector('.selling-price');
+const existingCostPriceInput = document.querySelector('.existing-cost-price');
+const existingProfitMarginInput = document.querySelector('.existing-profit-margin');
+const existingSellingPriceInput = document.querySelector('.existing-selling-price');
 const menuToggle = document.getElementById('menu-toggle');
 const sidebar = document.getElementById('sidebar');
 const sidebarClose = document.getElementById('sidebar-close');
@@ -36,9 +46,11 @@ const clientAddressInput = document.querySelector('.client-address');
 const clientBirthdayInput = document.querySelector('.client-birthday');
 const clientNotesInput = document.querySelector('.client-notes');
 const ordersKey = 'gestorOrders';
+const investmentKey = 'gestorInvestment';
 const ordersSearch = document.getElementById('orders-search');
 const orderList = document.getElementById('order-list');
 const orderCount = document.getElementById('order-count');
+const orderUnpaidInfo = document.getElementById('order-unpaid-info');
 const newOrderBtn = document.querySelector('.new-order-btn');
 const orderFormEl = document.getElementById('order-form');
 const orderCodeInput = document.querySelector('.order-code');
@@ -47,6 +59,8 @@ const orderClientSelect = document.querySelector('.order-client-select');
 const orderClientNameNew = document.querySelector('.order-client-name-new');
 const orderClientNameRow = document.querySelector('.client-name-new-row');
 const orderProductSelect = document.querySelector('.order-product');
+const orderBatchSelect = document.querySelector('.order-batch');
+const orderBatchField = document.querySelector('.order-batch-field');
 const orderQuantityInput = document.querySelector('.order-quantity');
 const orderDiscountInput = document.querySelector('.order-discount');
 const orderFreightInput = document.querySelector('.order-freight');
@@ -94,6 +108,27 @@ let activeFinanceCategory = 'recebido';
 const authKey = 'gestorLoggedIn';
 const currentUserKey = 'gestorCurrentUser';
 const currentShopKey = 'gestorCurrentShop';
+
+function getCurrentUser() {
+    return localStorage.getItem(currentUserKey) || '';
+}
+
+function getUserKeySuffix() {
+    const user = getCurrentUser().trim();
+    return user ? encodeURIComponent(user.toLowerCase()) : '';
+}
+
+function getUserStorageKey(baseKey) {
+    const suffix = getUserKeySuffix();
+    if (!suffix) return baseKey;
+    const userKey = `${baseKey}:${suffix}`;
+    if (localStorage.getItem(userKey) === null && localStorage.getItem(baseKey) !== null) {
+        localStorage.setItem(userKey, localStorage.getItem(baseKey));
+        localStorage.removeItem(baseKey);
+    }
+    return userKey;
+}
+
 const loginPage = 'login.html';
 
 const isLoggedIn = () => localStorage.getItem(authKey) === 'true';
@@ -141,28 +176,55 @@ function displayLoggedUser() {
 window.addEventListener('DOMContentLoaded', () => {
     setupLogoutButtons();
     displayLoggedUser();
+    initializeInvestment();
+    if (currentPage === 'cadastrar.html') {
+        initializeProductMode();
+    }
 });
 
 function getInventoryData() {
     try {
-        return JSON.parse(localStorage.getItem(inventoryKey) || '[]');
+        return JSON.parse(localStorage.getItem(getUserStorageKey(inventoryKey)) || '[]');
     } catch {
         return [];
     }
 }
 
 function setInventoryData(data) {
-    localStorage.setItem(inventoryKey, JSON.stringify(data));
+    localStorage.setItem(getUserStorageKey(inventoryKey), JSON.stringify(data));
+}
+
+function getInvestmentData() {
+    const value = localStorage.getItem(getUserStorageKey(investmentKey));
+    const amount = parseFloat(value);
+    return Number.isFinite(amount) ? amount : 0;
+}
+
+function setInvestmentData(value) {
+    localStorage.setItem(getUserStorageKey(investmentKey), Number(value || 0).toFixed(2));
+}
+
+function addInvestment(amount) {
+    const current = getInvestmentData();
+    setInvestmentData(current + (parseFloat(amount) || 0));
+}
+
+function initializeInvestment() {
+    if (localStorage.getItem(getUserStorageKey(investmentKey)) !== null) return;
+    const inventoryData = getInventoryData();
+    const initialInvestment = inventoryData.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
+    setInvestmentData(initialInvestment);
 }
 
 function checkInventoryWarning() {
     if (!inventoryWarning) return;
 
     const inventoryData = getInventoryData();
-    const lowStockItems = inventoryData.filter(item => parseInt(item.quantity, 10) === 1);
+    const groupedItems = getGroupedInventoryData(inventoryData);
+    const lowStockGroups = groupedItems.filter(group => parseInt(group.quantity, 10) === 1);
 
-    if (lowStockItems.length > 0) {
-        inventoryWarning.textContent = `Atenção: há ${lowStockItems.length} peça${lowStockItems.length === 1 ? '' : 's'} com apenas 1 unidade no estoque.`;
+    if (lowStockGroups.length > 0) {
+        inventoryWarning.textContent = `Atenção: há ${lowStockGroups.length} peça${lowStockGroups.length === 1 ? '' : 's'} com apenas 1 unidade no estoque.`;
         inventoryWarning.classList.add('show');
     } else {
         inventoryWarning.classList.remove('show');
@@ -171,6 +233,13 @@ function checkInventoryWarning() {
 
 function formatMoney(value) {
     return 'R$ ' + Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function updateExistingValues() {
+    if (!existingCostPriceInput || !existingProfitMarginInput || !existingSellingPriceInput) return;
+    const cost = parseFloat(existingCostPriceInput.value) || 0;
+    const margin = parseFloat(existingProfitMarginInput.value) || 0;
+    existingSellingPriceInput.value = formatMoney(cost * (1 + margin / 100));
 }
 
 function updateValues() {
@@ -193,6 +262,8 @@ function resetForm() {
     if (!orderNameInput) return;
     orderNameInput.value = '';
     detailsInput.value = '';
+    if (purchaseLocationInput) purchaseLocationInput.value = '';
+    if (existingPurchaseLocationInput) existingPurchaseLocationInput.value = '';
     sizeInput.value = '';
     unitPriceInput.value = '';
     quantityInput.value = 1;
@@ -200,7 +271,41 @@ function resetForm() {
     profitMarginInput.value = '';
     totalValueInput.value = formatMoney(0);
     sellingPriceInput.value = formatMoney(0);
+    if (existingCostPriceInput) existingCostPriceInput.value = '';
+    if (existingProfitMarginInput) existingProfitMarginInput.value = '';
+    if (existingSellingPriceInput) existingSellingPriceInput.value = formatMoney(0);
     orderNameInput.focus();
+}
+
+function getGroupedInventoryData(inventoryData, query = '') {
+    const groups = {};
+    const normalizedQuery = query.trim().toLowerCase();
+
+    inventoryData.forEach((item, index) => {
+        const itemQty = parseInt(item.quantity, 10) || 0;
+        if (itemQty <= 0) return; // ignore empty batches
+        const productKey = `${(item.product || '').trim().toLowerCase()}||${(item.size || '').trim().toLowerCase()}`;
+        if (!groups[productKey]) {
+            groups[productKey] = {
+                product: item.product,
+                details: item.details,
+                purchaseLocation: item.purchaseLocation || '',
+                size: item.size,
+                quantity: 0,
+                total: 0,
+                batches: []
+            };
+        }
+        groups[productKey].quantity += itemQty;
+        groups[productKey].total += parseFloat(item.total) || 0;
+        groups[productKey].batches.push({ ...item, batchIndex: index });
+    });
+
+    return Object.values(groups).filter(group => {
+        return group.product.toLowerCase().includes(normalizedQuery)
+            || (group.details || '').toLowerCase().includes(normalizedQuery)
+            || (group.size || '').toLowerCase().includes(normalizedQuery);
+    });
 }
 
 function renderInventory(filter = '') {
@@ -210,38 +315,223 @@ function renderInventory(filter = '') {
     const inventoryData = getInventoryData();
     inventoryItems.innerHTML = '';
 
-    const filteredItems = inventoryData.filter(item => {
-        return item.product.toLowerCase().includes(query)
-            || item.details.toLowerCase().includes(query)
-            || item.size.toLowerCase().includes(query);
-    });
+    const groupedItems = getGroupedInventoryData(inventoryData, query);
 
-    if (filteredItems.length === 0) {
+    if (groupedItems.length === 0) {
         inventoryItems.innerHTML = `
             <tr class="inventory-empty">
-                <td colspan="6">Nenhuma peça encontrada no estoque.</td>
+                <td colspan="7">Nenhuma peça encontrada no estoque.</td>
             </tr>`;
     } else {
-        filteredItems.forEach(item => {
+        groupedItems.forEach(group => {
             const row = document.createElement('tr');
-            const lowStock = parseInt(item.quantity, 10) === 1;
+            const lowStock = parseInt(group.quantity, 10) === 1;
             if (lowStock) {
                 row.classList.add('low-stock');
             }
             row.innerHTML = `
-                <td data-label="Produto">${item.product}</td>
-                <td data-label="Detalhes">${item.details || '—'}</td>
-                <td data-label="Tamanho">${item.size || '—'}</td>
-                <td data-label="Qtd">${item.quantity}</td>
-                <td data-label="Total">${formatMoney(item.total)}</td>
-                <td data-label="Preço de venda">${formatMoney(item.sellingPrice)}</td>
+                <td data-label="Produto">${group.product}</td>
+                <td data-label="Detalhes">${group.details || '—'}</td>
+                <td data-label="Tamanho">${group.size || '—'}</td>
+                <td data-label="Qtd">${group.quantity}</td>
+                <td data-label="Total">${formatMoney(group.total)}</td>
             `;
+            const priceCell = document.createElement('td');
+            priceCell.setAttribute('data-label', 'Preço de venda');
+            if (group.batches.length > 1) {
+                const viewLotsButton = document.createElement('button');
+                viewLotsButton.type = 'button';
+                viewLotsButton.className = 'table-action-btn';
+                viewLotsButton.textContent = 'Ver lotes';
+                viewLotsButton.addEventListener('click', () => showBatchSellingPrices(group.product, group.size));
+                priceCell.appendChild(viewLotsButton);
+            } else if (group.batches.length === 1) {
+                const sellingPrice = parseFloat(group.batches[0].sellingPrice) || 0;
+                priceCell.textContent = formatMoney(sellingPrice);
+            } else {
+                priceCell.textContent = '—';
+            }
+            row.appendChild(priceCell);
+
+            const actionCell = document.createElement('td');
+            const deleteButton = document.createElement('button');
+            deleteButton.type = 'button';
+            deleteButton.className = 'table-action-btn delete-btn';
+            deleteButton.textContent = 'Excluir';
+            deleteButton.addEventListener('click', () => deleteGroupedInventoryItem(group.product, group.size));
+            actionCell.appendChild(deleteButton);
+            row.appendChild(actionCell);
             inventoryItems.appendChild(row);
         });
     }
 
-    inventoryCount.textContent = filteredItems.length;
+    inventoryCount.textContent = groupedItems.length;
     checkInventoryWarning();
+}
+
+function hideBatchPanel() {
+    if (!batchPanel) return;
+    batchPanel.classList.remove('visible');
+    batchPanel.setAttribute('aria-hidden', 'true');
+}
+
+if (batchPanelClose) {
+    batchPanelClose.addEventListener('click', hideBatchPanel);
+}
+
+function showBatchSellingPrices(product, size, options = {}) {
+    const inventoryData = getInventoryData();
+    const batches = inventoryData
+        .map((item, index) => ({ ...item, batchIndex: index }))
+        .filter(item => item.product === product && item.size === size && (parseInt(item.quantity, 10) || 0) > 0);
+
+    const totalQuantity = batches.reduce((sum, batch) => sum + (parseInt(batch.quantity, 10) || 0), 0);
+    const header = `${product}${size ? ` (${size})` : ''}`;
+
+    if (!batchPanel) {
+        if (batches.length === 0) {
+            alert('Nenhum lote encontrado para este produto.');
+            return;
+        }
+
+        const lines = batches.map((batch, idx) => {
+            const costInfo = batch.costPrice ? ` / Custo ${formatMoney(batch.costPrice)}` : '';
+            const marginInfo = batch.profitMargin ? ` / Lucro ${batch.profitMargin}%` : '';
+            return `${idx + 1}. Qtd ${batch.quantity} — ${formatMoney(batch.sellingPrice || 0)}${costInfo}${marginInfo}`;
+        });
+
+        alert(`Preços de venda para ${header}:\n\n${lines.join('\n')}`);
+        return;
+    }
+
+    const allowDelete = !!options.allowDelete;
+
+    batchPanelTitle.textContent = header;
+    batchPanelSubtitle.textContent = `Total de ${batches.length} lote${batches.length === 1 ? '' : 's'} • ${totalQuantity} unidade${totalQuantity === 1 ? '' : 's'}`;
+
+    if (batches.length === 0) {
+        batchPanelContent.innerHTML = '<p class="batch-empty">Nenhum lote encontrado para este produto.</p>';
+        batchPanel.classList.add('visible');
+        batchPanel.setAttribute('aria-hidden', 'false');
+        return;
+    }
+
+    batchPanelContent.innerHTML = batches.map((batch, idx) => {
+        const detailLine = batch.details ? `<div class="batch-card-line"><span>Detalhes</span><strong>${batch.details}</strong></div>` : '';
+        const locationLine = batch.purchaseLocation ? `<div class="batch-card-line"><span>Comprado em</span><strong>${batch.purchaseLocation}</strong></div>` : '';
+        const costLine = batch.costPrice ? `<div class="batch-card-line"><span>Custo</span><strong>${formatMoney(batch.costPrice)}</strong></div>` : '';
+        const marginLine = batch.profitMargin ? `<div class="batch-card-line"><span>Margem</span><strong>${batch.profitMargin}%</strong></div>` : '';
+        const deleteButtonHtml = allowDelete ? `<button type="button" class="batch-delete-btn" data-batch-index="${batch.batchIndex}" data-batch-number="${idx + 1}" aria-label="Excluir lote ${idx + 1}">🗑️</button>` : '';
+
+        return `
+            <div class="batch-card">
+                <div class="batch-card-header">
+                    <span>Lote ${idx + 1}</span>
+                    <span>${batch.quantity} unidade${batch.quantity === 1 ? '' : 's'}</span>
+                    ${deleteButtonHtml}
+                </div>
+                ${detailLine}
+                ${locationLine}
+                <div class="batch-card-line"><span>Preço venda</span><strong>${formatMoney(batch.sellingPrice || 0)}</strong></div>
+                ${costLine}
+                ${marginLine}
+            </div>
+        `;
+    }).join('');
+
+    if (allowDelete) {
+        // add an "Excluir todos" control at the top of the panel
+        const deleteAllHtml = `<div class="batch-panel-actions"><button type="button" id="batch-delete-all" class="danger">Excluir todos</button></div>`;
+        batchPanelContent.insertAdjacentHTML('afterbegin', deleteAllHtml);
+    }
+
+    batchPanel.classList.add('visible');
+    batchPanel.setAttribute('aria-hidden', 'false');
+
+    if (allowDelete) {
+        // attach handlers for individual delete buttons
+        const deleteButtons = batchPanel.querySelectorAll('.batch-delete-btn');
+        deleteButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const batchIndex = parseInt(btn.getAttribute('data-batch-index'), 10);
+                const batchNumber = btn.getAttribute('data-batch-number');
+                const inventoryDataInner = getInventoryData();
+                const batchItem = inventoryDataInner[batchIndex];
+                if (!batchItem) return;
+                const productLabel = `${product}${size ? ` (${size})` : ''}`;
+                const confirmed = confirm(`Deseja excluir o lote ${batchNumber} de ${productLabel} (Qtd ${batchItem.quantity})?`);
+                if (!confirmed) return;
+                inventoryDataInner.splice(batchIndex, 1);
+                setInventoryData(inventoryDataInner);
+                hideBatchPanel();
+                renderInventory(inventorySearch ? inventorySearch.value : '');
+                populateProductOptions();
+                renderFinance();
+                alert(`✅ Lote ${batchNumber} removido do estoque.`);
+            });
+        });
+
+        const deleteAllBtn = batchPanel.querySelector('#batch-delete-all');
+        if (deleteAllBtn) {
+            deleteAllBtn.addEventListener('click', () => {
+                const productLabel = `${product}${size ? ` (${size})` : ''}`;
+                const confirmed = confirm(`Deseja excluir todos os lotes de ${productLabel}?`);
+                if (!confirmed) return;
+                const filteredData = getInventoryData().filter(item => !(item.product === product && item.size === size));
+                setInventoryData(filteredData);
+                hideBatchPanel();
+                renderInventory(inventorySearch ? inventorySearch.value : '');
+                populateProductOptions();
+                renderFinance();
+                alert('✅ Todos os lotes foram removidos do estoque.');
+            });
+        }
+    }
+}
+
+function deleteGroupedInventoryItem(product, size) {
+    const inventoryData = getInventoryData();
+    const batches = inventoryData
+        .map((item, index) => ({ ...item, batchIndex: index }))
+        .filter(item => item.product === product && item.size === size);
+
+    if (batches.length === 0) return;
+
+    const productLabel = `${product}${size ? ` (${size})` : ''}`;
+
+    if (batches.length === 1) {
+        const confirmed = confirm(`Deseja excluir o produto ${productLabel} do estoque?`);
+        if (!confirmed) return;
+        inventoryData.splice(batches[0].batchIndex, 1);
+        setInventoryData(inventoryData);
+        hideBatchPanel();
+        renderInventory(inventorySearch ? inventorySearch.value : '');
+        populateProductOptions();
+        renderFinance();
+        alert('✅ Produto removido do estoque.');
+        return;
+    }
+
+    // Quando houver múltiplos lotes, abrir o painel com botões de lixeira
+    showBatchSellingPrices(product, size, { allowDelete: true });
+    return;
+}
+
+function deleteInventoryItem(index) {
+    const inventoryData = getInventoryData();
+    if (index < 0 || index >= inventoryData.length) return;
+
+    const item = inventoryData[index];
+    const itemLabel = `${item.product}${item.size ? ' - ' + item.size : ''}`;
+    const confirmed = confirm(`Tem certeza que deseja excluir ${itemLabel} do estoque?`);
+    if (!confirmed) return;
+
+    inventoryData.splice(index, 1);
+    setInventoryData(inventoryData);
+    renderInventory(inventorySearch ? inventorySearch.value : '');
+    populateProductOptions();
+    renderFinance();
+    alert('✅ Produto excluído do estoque.');
 }
 
 // Product Mode Management
@@ -256,6 +546,11 @@ function initializeProductMode() {
     const existingForm = document.getElementById('existing-product-form');
     const newBtn = document.querySelector('.new-product-mode-btn');
     const existingBtn = document.querySelector('.existing-product-mode-btn');
+    const modeSelector = document.querySelector('.product-mode-selector');
+    const selectedInfo = document.getElementById('selected-product-info');
+    const existingSelector = document.querySelector('.existing-product-selector');
+    const productListEl = document.getElementById('existing-product-list');
+    const modeButtonsEl = document.querySelector('.mode-buttons');
     
     // Hide both forms
     if (newForm) newForm.classList.add('hidden-section');
@@ -264,6 +559,13 @@ function initializeProductMode() {
     // Remove active state from both buttons
     if (newBtn) newBtn.classList.remove('active');
     if (existingBtn) existingBtn.classList.remove('active');
+    
+    // Restore the main selector and reset any existing-product selection view
+    if (modeSelector) modeSelector.classList.remove('hidden-section');
+    if (selectedInfo) selectedInfo.classList.add('hidden-section');
+    if (existingSelector) existingSelector.classList.remove('hidden-section');
+    if (productListEl) productListEl.classList.remove('hidden-section');
+    if (modeButtonsEl) modeButtonsEl.classList.remove('hidden-section');
 }
 
 function switchToNewProduct() {
@@ -311,21 +613,22 @@ function populateExistingProductList() {
     if (!productList) return;
     
     const inventoryData = getInventoryData();
+    const groupedProducts = getGroupedInventoryData(inventoryData);
     
-    if (inventoryData.length === 0) {
+    if (groupedProducts.length === 0) {
         productList.innerHTML = '<p class="no-products-msg">Nenhum produto no estoque ainda.</p>';
         return;
     }
     
     productList.innerHTML = '';
-    inventoryData.forEach((item, index) => {
+    groupedProducts.forEach((group, index) => {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'existing-product-btn compact';
         btn.innerHTML = `
-            <div class="compact-line"><strong>${item.product}</strong></div>
-            ${item.details ? `<div class="compact-sub"><small>${item.details}</small></div>` : ''}
-            ${item.size ? `<div class="compact-sub"><small>Tamanho: ${item.size}</small></div>` : ''}
+            <div class="compact-line"><strong>${group.product}</strong> ${group.size ? `<small>(${group.size})</small>` : ''}</div>
+            ${group.details ? `<div class="compact-sub"><small>${group.details}</small></div>` : ''}
+            <div class="compact-sub"><small>Vend.: ${formatMoney(group.batches[0]?.sellingPrice || 0)} · Qtd: ${group.quantity}</small></div>
         `;
         btn.addEventListener('click', () => selectExistingProduct(index));
         productList.appendChild(btn);
@@ -334,12 +637,13 @@ function populateExistingProductList() {
 
 function selectExistingProduct(productIndex) {
     const inventoryData = getInventoryData();
-    if (productIndex < 0 || productIndex >= inventoryData.length) {
+    const groupedProducts = getGroupedInventoryData(inventoryData);
+    if (productIndex < 0 || productIndex >= groupedProducts.length) {
         alert('Produto não encontrado.');
         return;
     }
     
-    const product = inventoryData[productIndex];
+    const product = groupedProducts[productIndex];
     selectedExistingProductIndex = productIndex;
     
     // Display product info
@@ -351,6 +655,21 @@ function selectExistingProduct(productIndex) {
     // Reset quantity input for adding units
     const qtyInput = document.querySelector('.existing-product-quantity');
     if (qtyInput) qtyInput.value = 1;
+    if (existingPurchaseLocationInput) existingPurchaseLocationInput.value = '';
+    
+    const representative = product.batches[0] || {};
+    if (existingCostPriceInput) {
+        const itemCost = parseFloat(representative.costPrice) || (product.quantity > 0 ? product.total / product.quantity : 0);
+        existingCostPriceInput.value = itemCost.toFixed(2);
+    }
+    if (existingProfitMarginInput) {
+        existingProfitMarginInput.value = parseFloat(representative.profitMargin) || 0;
+    }
+    if (existingSellingPriceInput) {
+        const costValue = parseFloat(existingCostPriceInput?.value) || 0;
+        const profitValue = parseFloat(existingProfitMarginInput?.value) || 0;
+        existingSellingPriceInput.value = formatMoney(costValue * (1 + profitValue / 100));
+    }
     
     // Show selected product info
     const selectedInfo = document.getElementById('selected-product-info');
@@ -396,10 +715,16 @@ function addNewProduct() {
 
     const product = orderNameInput.value.trim() || 'Produto não informado';
     const details = detailsInput.value.trim();
+    const purchaseLocation = purchaseLocationInput ? purchaseLocationInput.value.trim() : '';
     const size = sizeInput.value.trim();
     const quantity = parseInt(quantityInput.value, 10) || 0;
     const total = parseFloat((parseFloat(unitPriceInput.value) || 0) * quantity);
     const sellingPrice = (parseFloat(costPriceInput.value) || 0) * (1 + (parseFloat(profitMarginInput.value) || 0) / 100);
+
+    if (!purchaseLocation) {
+        alert('❌ Informe onde o produto foi comprado.');
+        return;
+    }
 
     const inventoryData = getInventoryData();
     
@@ -424,16 +749,22 @@ function addNewProduct() {
     inventoryData.push({
         product,
         details,
+        purchaseLocation,
         size,
         quantity,
         total,
+        costPrice: parseFloat(costPriceInput.value) || 0,
+        profitMargin: parseFloat(profitMarginInput.value) || 0,
         sellingPrice: sellingPrice || 0
     });
 
+    addInvestment(total);
     setInventoryData(inventoryData);
     renderInventory(inventorySearch ? inventorySearch.value : '');
     populateProductOptions();
     resetForm();
+    initializeProductMode();
+    renderFinance();
     alert('✅ Produto adicionado ao estoque com sucesso!');
 }
 
@@ -445,6 +776,12 @@ function addUnitsToExistingProduct() {
     
     const quantityInput = document.querySelector('.existing-product-quantity');
     const quantity = parseInt(quantityInput.value, 10) || 0;
+    const purchaseLocationValue = existingPurchaseLocationInput?.value.trim();
+    
+    if (!purchaseLocationValue) {
+        alert('❌ Informe onde o produto foi comprado.');
+        return;
+    }
     
     if (quantity <= 0) {
         alert('Informe uma quantidade válida.');
@@ -452,12 +789,40 @@ function addUnitsToExistingProduct() {
     }
 
     const inventoryData = getInventoryData();
-    inventoryData[selectedExistingProductIndex].quantity += quantity;
+    const groupedProducts = getGroupedInventoryData(inventoryData);
+    const selectedGroup = groupedProducts[selectedExistingProductIndex];
+    if (!selectedGroup) {
+        alert('Selecione um produto primeiro.');
+        return;
+    }
+
+    const representative = selectedGroup.batches[0] || {};
+    const unitCost = selectedGroup.quantity > 0 ? selectedGroup.total / selectedGroup.quantity : 0;
+    const existingCost = parseFloat(existingCostPriceInput?.value) || unitCost;
+    const existingProfitMargin = parseFloat(existingProfitMarginInput?.value) || parseFloat(representative.profitMargin) || 0;
+    const purchaseLocation = purchaseLocationValue || selectedGroup.purchaseLocation || '';
+    const addedTotal = existingCost * quantity;
+    const updatedSellingPrice = existingCost * (1 + existingProfitMargin / 100);
+
+    inventoryData.push({
+        product: selectedGroup.product,
+        details: selectedGroup.details,
+        purchaseLocation,
+        size: selectedGroup.size,
+        quantity,
+        total: addedTotal,
+        costPrice: existingCost,
+        profitMargin: existingProfitMargin,
+        sellingPrice: updatedSellingPrice
+    });
+
+    addInvestment(addedTotal);
 
     setInventoryData(inventoryData);
     renderInventory(inventorySearch ? inventorySearch.value : '');
     populateProductOptions();
-    switchToNewProduct();
+    initializeProductMode();
+    renderFinance();
     alert(`${quantity} unidade(s) adicionada(s) ao estoque.`);
 }
 
@@ -465,6 +830,9 @@ if (addStockBtn) {
     addStockBtn.addEventListener('click', addStock);
     [unitPriceInput, quantityInput, costPriceInput, profitMarginInput].forEach(input => {
         if (input) input.addEventListener('input', updateValues);
+    });
+    [existingCostPriceInput, existingProfitMarginInput].forEach(input => {
+        if (input) input.addEventListener('input', updateExistingValues);
     });
 }
 
@@ -513,14 +881,14 @@ if (inventorySearch) {
 // Clients storage and UI
 function getClientsData() {
     try {
-        return JSON.parse(localStorage.getItem(clientsKey) || '[]');
+        return JSON.parse(localStorage.getItem(getUserStorageKey(clientsKey)) || '[]');
     } catch {
         return [];
     }
 }
 
 function setClientsData(data) {
-    localStorage.setItem(clientsKey, JSON.stringify(data));
+    localStorage.setItem(getUserStorageKey(clientsKey), JSON.stringify(data));
 }
 
 function renderClients(filter = '') {
@@ -620,7 +988,7 @@ function addClient() {
 
 function getOrdersData() {
     try {
-        const data = JSON.parse(localStorage.getItem(ordersKey) || '[]');
+        const data = JSON.parse(localStorage.getItem(getUserStorageKey(ordersKey)) || '[]');
         if (!Array.isArray(data)) return [];
         return data.map(order => ({
             ...order,
@@ -632,7 +1000,7 @@ function getOrdersData() {
 }
 
 function setOrdersData(data) {
-    localStorage.setItem(ordersKey, JSON.stringify(data));
+    localStorage.setItem(getUserStorageKey(ordersKey), JSON.stringify(data));
 }
 
 function generateOrderCode() {
@@ -711,8 +1079,7 @@ function getFinanceTotals() {
 }
 
 function getInvestmentTotal() {
-    const items = getInventoryData();
-    return sumValues(items, item => parseFloat(item.total) || 0);
+    return getInvestmentData();
 }
 
 function getCashBalance() {
@@ -814,6 +1181,7 @@ function renderFinanceDetails(category) {
     if (category === 'recebido') items = totals.receivedOrders;
     if (category === 'receber') items = totals.receivableOrders;
     if (category === 'atraso') items = totals.overdueOrders;
+    items = items.slice().sort((a, b) => new Date(b.created || b.date) - new Date(a.created || a.date));
     financeDetailList.innerHTML = items.length === 0 ? '<p>Nenhum pedido encontrado para este tipo.</p>' : items.map(order => {
         const amount = category === 'recebido'
             ? parseFloat(order.total) || 0
@@ -851,14 +1219,14 @@ let selectedAgendaDate = new Date();
 
 function getAgendaData() {
     try {
-        return JSON.parse(localStorage.getItem(agendaKey) || '[]');
+        return JSON.parse(localStorage.getItem(getUserStorageKey(agendaKey)) || '[]');
     } catch {
         return [];
     }
 }
 
 function setAgendaData(data) {
-    localStorage.setItem(agendaKey, JSON.stringify(data));
+    localStorage.setItem(getUserStorageKey(agendaKey), JSON.stringify(data));
 }
 
 function getAgendaKey(date) {
@@ -894,11 +1262,16 @@ function deleteAgendaEvent(date, eventIndex) {
 function getPaymentDueEvents() {
     return getOrdersData()
         .filter(order => order.signalDate && !order.paid)
-        .map(order => ({
-            date: order.signalDate,
-            label: `${order.clientName} — ${formatMoney(order.signalAmount || 0)} (${order.code})`,
-            code: order.code,
-        }));
+        .map(order => {
+            const total = parseFloat(order.total) || 0;
+            const signal = parseFloat(order.signalAmount) || 0;
+            const amountDue = Math.max(0, total - signal);
+            return {
+                date: order.signalDate,
+                label: `${order.clientName} — Falta receber ${formatMoney(amountDue)} (${order.code})`,
+                code: order.code,
+            };
+        });
 }
 
 function renderCalendar() {
@@ -1025,23 +1398,79 @@ function populateClientOptions() {
 
 function populateProductOptions() {
     if (!orderProductSelect) return;
-    const products = getInventoryData();
+    const inventoryData = getInventoryData();
+    const groupedProducts = getGroupedInventoryData(inventoryData);
     const current = orderProductSelect.value;
     orderProductSelect.innerHTML = '<option value="">-- selecione produto --</option>';
-    products.forEach((item, index) => {
+    groupedProducts.forEach((group, index) => {
         const option = document.createElement('option');
-        option.value = index;
-        option.textContent = `${item.product}${item.size ? ` (${item.size})` : ''} - ${formatMoney(item.sellingPrice)}`;
+        option.value = `group_${index}`;
+        option.textContent = `${group.product}${group.size ? ` (${group.size})` : ''} - ${formatMoney(group.batches[0]?.sellingPrice || 0)}`;
         orderProductSelect.appendChild(option);
     });
     if (current) orderProductSelect.value = current;
 }
 
+function populateBatchOptions() {
+    if (!orderBatchSelect || !orderProductSelect) return;
+    const selectedValue = orderProductSelect.value;
+    if (!selectedValue || !selectedValue.startsWith('group_')) {
+        if (orderBatchField) orderBatchField.classList.add('hidden-field');
+        orderBatchSelect.innerHTML = '<option value="">-- selecione lote --</option>';
+        return;
+    }
+
+    const inventoryData = getInventoryData();
+    const groupedProducts = getGroupedInventoryData(inventoryData);
+    const groupIndex = parseInt(selectedValue.replace('group_', ''), 10);
+    const group = groupedProducts[groupIndex];
+
+    if (!group) return;
+
+    orderBatchSelect.innerHTML = '<option value="">-- selecione lote --</option>';
+    
+    if (group.batches.length > 1) {
+        if (orderBatchField) orderBatchField.classList.remove('hidden-field');
+        group.batches.forEach((batch, batchIdx) => {
+            const option = document.createElement('option');
+            option.value = `batch_${groupIndex}_${batchIdx}`;
+            option.textContent = `Lote ${batchIdx + 1} - Qtd: ${batch.quantity} (${batch.purchaseLocation || 'sem local'})`;
+            orderBatchSelect.appendChild(option);
+        });
+    } else if (group.batches.length === 1) {
+        if (orderBatchField) orderBatchField.classList.add('hidden-field');
+        orderBatchSelect.value = `batch_${groupIndex}_0`;
+    }
+}
+
 function updateOrderTotal() {
     if (!orderTotalInput) return;
-    const items = getInventoryData();
-    const selectedIndex = parseInt(orderProductSelect?.value, 10);
-    const product = !Number.isNaN(selectedIndex) ? items[selectedIndex] : null;
+    let product = null;
+
+    if (orderBatchSelect && orderBatchSelect.value) {
+        const batchValue = orderBatchSelect.value;
+        if (batchValue.startsWith('batch_')) {
+            const [, groupIdx, batchIdx] = batchValue.split('_');
+            const inventoryData = getInventoryData();
+            const groupedProducts = getGroupedInventoryData(inventoryData);
+            const group = groupedProducts[parseInt(groupIdx, 10)];
+            if (group && group.batches[parseInt(batchIdx, 10)]) {
+                product = group.batches[parseInt(batchIdx, 10)];
+            }
+        }
+    } else if (orderProductSelect && orderProductSelect.value) {
+        const selectedValue = orderProductSelect.value;
+        if (selectedValue.startsWith('group_')) {
+            const groupIndex = parseInt(selectedValue.replace('group_', ''), 10);
+            const inventoryData = getInventoryData();
+            const groupedProducts = getGroupedInventoryData(inventoryData);
+            const group = groupedProducts[groupIndex];
+            if (group && group.batches[0]) {
+                product = group.batches[0];
+            }
+        }
+    }
+
     const quantity = parseFloat(orderQuantityInput?.value) || 1;
     const base = product ? (product.sellingPrice || 0) * quantity : 0;
     const discount = parseFloat(orderDiscountInput?.value) || 0;
@@ -1060,6 +1489,11 @@ function getOrderPaymentLabel(order) {
         return `${order.installmentsQty || 0}x de R$ ${formatMoney(order.installmentValue).replace('R$ ', '')}`;
     }
     return 'À vista';
+}
+
+function getOrderProductLabel(order) {
+    if (!order) return '—';
+    return `${order.productName || ''}${order.productSize ? ` (${order.productSize})` : ''}`;
 }
 
 function toggleOrderPayment() {
@@ -1106,6 +1540,11 @@ function resetOrderForm() {
     if (orderClientNameNew) orderClientNameNew.value = '';
     if (orderClientNameRow) orderClientNameRow.classList.add('hidden-field');
     if (orderProductSelect) orderProductSelect.value = '';
+    if (orderBatchSelect) {
+        orderBatchSelect.innerHTML = '<option value="">-- selecione lote --</option>';
+        orderBatchSelect.value = '';
+    }
+    if (orderBatchField) orderBatchField.classList.add('hidden-field');
     if (orderQuantityInput) orderQuantityInput.value = 1;
     if (orderDiscountInput) orderDiscountInput.value = '';
     if (orderFreightInput) orderFreightInput.value = '';
@@ -1130,15 +1569,92 @@ function saveOrder() {
     const code = orderCodeInput.value || generateOrderCode();
     const date = (orderDateInput?.value && orderDateInput.value.trim()) || new Date().toLocaleDateString('pt-BR');
     const selectedClient = orderClientSelect?.value || '';
-    const clientName = selectedClient === '_new' ? (orderClientNameNew?.value.trim() || 'Cliente não informado') : selectedClient || 'Cliente não informado';
-    const productIndex = parseInt(orderProductSelect?.value, 10);
-    const products = getInventoryData();
-    const product = !Number.isNaN(productIndex) ? products[productIndex] : null;
-    const productName = product ? product.product : 'Produto não informado';
+    if (!selectedClient) {
+        alert('Selecione um cliente ou informe um novo cliente.');
+        return;
+    }
+    let clientName = '';
+    if (selectedClient === '_new') {
+        const newName = (orderClientNameNew?.value || '').trim();
+        if (!newName) {
+            alert('Informe o nome do cliente.');
+            if (orderClientNameRow) orderClientNameRow.classList.remove('hidden-field');
+            if (orderClientNameNew) orderClientNameNew.focus();
+            return;
+        }
+        clientName = newName;
+        // salvar novo cliente nos cadastros
+        const clients = getClientsData();
+        clients.push({ name: newName, source: '', type: 'pf', cpf: '', cnpj: '', razao: '', phone: '', address: '', birthday: '', notes: '', created: new Date().toISOString() });
+        setClientsData(clients);
+        renderClients(clientsSearch ? clientsSearch.value : '');
+        populateClientOptions();
+    } else {
+        clientName = selectedClient || 'Cliente não informado';
+    }
+
+    const productSelectValue = orderProductSelect?.value || '';
+    const isMissingProduct = productSelectValue === 'missing_product';
+    if (!productSelectValue.startsWith('group_') && !isMissingProduct) {
+        alert('Selecione um produto para o pedido.');
+        return;
+    }
+
+    const inventoryData = getInventoryData();
+    const groupedProducts = getGroupedInventoryData(inventoryData);
+    let selectedGroup = null;
+
+    if (isMissingProduct) {
+        const orders = getOrdersData();
+        const existingOrder = editingOrderCode ? orders.find(o => o.code === editingOrderCode) : null;
+        selectedGroup = {
+            product: existingOrder?.productName || 'Produto não informado',
+            size: existingOrder?.productSize || '',
+            batches: [{
+                batchIndex: existingOrder?.batchInventoryIndex ?? null,
+                quantity: 0,
+                costPrice: 0,
+                total: 0,
+                sellingPrice: 0,
+                purchaseLocation: '',
+                details: ''
+            }]
+        };
+    } else {
+        const groupIndex = parseInt(productSelectValue.replace('group_', ''), 10);
+        selectedGroup = groupedProducts[groupIndex];
+    }
+
+    if (!selectedGroup) {
+        alert('Selecione um produto para o pedido.');
+        return;
+    }
+
+    let selectedBatch = null;
+    let selectedBatchInventoryIndex = null;
+
+    if (orderBatchSelect && orderBatchSelect.value && orderBatchSelect.value.startsWith('batch_')) {
+        const parts = orderBatchSelect.value.split('_');
+        const batchIdx = parseInt(parts[2], 10);
+        selectedBatch = selectedGroup.batches[batchIdx];
+        selectedBatchInventoryIndex = selectedBatch?.batchIndex;
+    } else if (selectedGroup.batches.length === 1) {
+        selectedBatch = selectedGroup.batches[0];
+        selectedBatchInventoryIndex = selectedBatch?.batchIndex;
+    }
+
+    if (!selectedBatch) {
+        alert('Selecione um lote do produto.');
+        return;
+    }
+
+    const productName = selectedGroup.product || 'Produto não informado';
     const quantity = parseInt(orderQuantityInput?.value, 10) || 1;
     const discount = parseFloat(orderDiscountInput?.value) || 0;
     const freight = parseFloat(orderFreightInput?.value) || 0;
     const fees = parseFloat(orderFeesInput?.value) || 0;
+    const productSize = selectedGroup.size || '';
+    const batchInventoryIndex = selectedBatch?.batchIndex ?? null;
     const total = parseFloat(orderTotalInput?.value.replace('R$','').replace('.','').replace(',','.')) || 0;
     let paymentCondition = 'avista';
     if (orderPaymentInputs) for (const r of orderPaymentInputs) if (r.checked) { paymentCondition = r.value; break; }
@@ -1149,16 +1665,56 @@ function saveOrder() {
     const notes = orderNotesInput?.value.trim() || '';
     const paid = orderPaidInput?.checked || false;
 
+    const stockQuantity = parseInt(selectedBatch.quantity, 10) || 0;
+    if (!editingOrderCode && quantity > stockQuantity) {
+        alert('Quantidade solicitada maior que a disponível no estoque para este lote.');
+        return;
+    }
+
+    if (!editingOrderCode) {
+        const unitCost = selectedBatch.costPrice ? parseFloat(selectedBatch.costPrice) : (stockQuantity > 0 ? (parseFloat(selectedBatch.total) || 0) / stockQuantity : 0);
+        const remainingCost = Math.max(0, (parseFloat(selectedBatch.total) || 0) - unitCost * quantity);
+        inventoryData[selectedBatchInventoryIndex].quantity = stockQuantity - quantity;
+        inventoryData[selectedBatchInventoryIndex].total = remainingCost;
+        if (inventoryData[selectedBatchInventoryIndex].quantity <= 0) {
+            inventoryData.splice(selectedBatchInventoryIndex, 1);
+        }
+        setInventoryData(inventoryData);
+        renderInventory(inventorySearch ? inventorySearch.value : '');
+        populateProductOptions();
+    }
+
     const orders = getOrdersData();
+    const orderObject = {
+        code,
+        date,
+        clientName,
+        productName,
+        productSize,
+        batchInventoryIndex,
+        quantity,
+        discount,
+        freight,
+        fees,
+        total,
+        paymentCondition,
+        signalAmount,
+        signalDate,
+        installmentsQty,
+        installmentValue,
+        notes,
+        paid
+    };
+
     if (editingOrderCode) {
         const index = orders.findIndex(o => o.code === editingOrderCode);
         if (index >= 0) {
-            orders[index] = { code, date, clientName, productName, quantity, discount, freight, fees, total, paymentCondition, signalAmount, signalDate, installmentsQty, installmentValue, notes, paid, created: orders[index].created };
+            orders[index] = { ...orderObject, created: orders[index].created };
         } else {
-            orders.push({ code, date, clientName, productName, quantity, discount, freight, fees, total, paymentCondition, signalAmount, signalDate, installmentsQty, installmentValue, notes, paid, created: new Date().toISOString() });
+            orders.push({ ...orderObject, created: new Date().toISOString() });
         }
     } else {
-        orders.push({ code, date, clientName, productName, quantity, discount, freight, fees, total, paymentCondition, signalAmount, signalDate, installmentsQty, installmentValue, notes, paid, created: new Date().toISOString() });
+        orders.push({ ...orderObject, created: new Date().toISOString() });
     }
     setOrdersData(orders);
     renderOrders(ordersSearch ? ordersSearch.value : '');
@@ -1170,12 +1726,13 @@ function saveOrder() {
 function renderOrders(filter = '') {
     if (!orderList || !orderCount) return;
     const q = (filter || '').trim().toLowerCase();
-    const orders = getOrdersData();
+    const orders = getOrdersData().slice().sort((a, b) => new Date(b.created || b.date) - new Date(a.created || a.date));
     orderList.innerHTML = '';
     const filtered = orders.filter(o => {
+        const productLabel = getOrderProductLabel(o).toLowerCase();
         return o.code.toLowerCase().includes(q)
             || o.clientName.toLowerCase().includes(q)
-            || o.productName.toLowerCase().includes(q);
+            || productLabel.includes(q);
     });
 
     if (filtered.length === 0) {
@@ -1190,7 +1747,7 @@ function renderOrders(filter = '') {
                 <td data-label="Código">${o.code || '—'}</td>
                 <td data-label="Data">${o.date || '—'}</td>
                 <td data-label="Cliente">${o.clientName}</td>
-                <td data-label="Produto">${o.productName}</td>
+                <td data-label="Produto">${getOrderProductLabel(o)}</td>
                 <td data-label="Qtd">${o.quantity}</td>
                 <td data-label="Total">${formatMoney(o.total)}</td>
                 <td data-label="Desconto">${formatMoney(o.discount || 0)}</td>
@@ -1203,8 +1760,19 @@ function renderOrders(filter = '') {
                     <button type="button" class="table-action-btn delete-order" data-code="${o.code}">Excluir</button>
                 </td>
             `;
+            if (!o.paid) row.classList.add('unpaid');
             orderList.appendChild(row);
         });
+    }
+
+    // show total unpaid orders (across all orders)
+    const unpaidTotal = orders.filter(x => !x.paid).length;
+    if (orderUnpaidInfo) {
+        if (unpaidTotal > 0) {
+            orderUnpaidInfo.innerHTML = `<span class="order-unpaid-badge">Atenção: ${unpaidTotal} pedido${unpaidTotal === 1 ? '' : 's'} não pago${unpaidTotal === 1 ? '' : 's'}</span>`;
+        } else {
+            orderUnpaidInfo.innerHTML = '';
+        }
     }
 
     orderCount.textContent = filtered.length;
@@ -1234,9 +1802,36 @@ function editOrder(code) {
         }
     }
     if (orderProductSelect) {
-        const products = getInventoryData();
-        const productIndex = products.findIndex(item => item.product === order.productName);
-        orderProductSelect.value = productIndex >= 0 ? String(productIndex) : '';
+        const inventoryData = getInventoryData();
+        const groupedProducts = getGroupedInventoryData(inventoryData);
+        const productIndex = groupedProducts.findIndex(group =>
+            group.product === order.productName &&
+            (group.size || '') === (order.productSize || '')
+        );
+
+        if (productIndex >= 0) {
+            orderProductSelect.value = `group_${productIndex}`;
+            populateBatchOptions();
+
+            const group = groupedProducts[productIndex];
+            if (order.batchInventoryIndex != null) {
+                const batchOptionIndex = group.batches.findIndex(batch => batch.batchIndex === order.batchInventoryIndex);
+                if (batchOptionIndex >= 0) {
+                    orderBatchSelect.value = `batch_${productIndex}_${batchOptionIndex}`;
+                }
+            } else if (group.batches.length === 1) {
+                orderBatchSelect.value = `batch_${productIndex}_0`;
+            }
+        } else {
+            // produto não está mais no estoque atual; permitir edição do pedido existente
+            orderProductSelect.innerHTML = '<option value="">-- selecione produto --</option>';
+            const missingOption = document.createElement('option');
+            missingOption.value = 'missing_product';
+            missingOption.textContent = `${order.productName || 'Produto desconhecido'}${order.productSize ? ` (${order.productSize})` : ''} — não está mais em estoque`;
+            missingOption.selected = true;
+            orderProductSelect.appendChild(missingOption);
+            if (orderBatchField) orderBatchField.classList.add('hidden-field');
+        }
     }
     if (orderQuantityInput) orderQuantityInput.value = order.quantity || 1;
     if (orderDiscountInput) orderDiscountInput.value = order.discount || '';
@@ -1258,6 +1853,14 @@ function editOrder(code) {
     updateOrderTotal();
     orderFormEl.classList.remove('hidden-field');
     setOrderFormButtonState(true);
+
+    const focusField = (orderClientNameRow && !orderClientNameRow.classList.contains('hidden-field') && orderClientNameNew)
+        || orderClientSelect
+        || orderProductSelect
+        || orderQuantityInput;
+    if (focusField && typeof focusField.focus === 'function') {
+        focusField.focus();
+    }
 }
 
 function deleteOrder(code) {
@@ -1270,14 +1873,16 @@ function deleteOrder(code) {
 
 if (orderList) {
     orderList.addEventListener('click', event => {
-        const target = event.target;
-        if (!(target instanceof HTMLElement)) return;
-        if (target.classList.contains('edit-order')) {
-            const code = target.dataset.code;
+        if (!(event.target instanceof HTMLElement)) return;
+        const editButton = event.target.closest('.edit-order');
+        if (editButton && editButton instanceof HTMLElement) {
+            const code = editButton.dataset.code;
             if (code) editOrder(code);
+            return;
         }
-        if (target.classList.contains('delete-order')) {
-            const code = target.dataset.code;
+        const deleteButton = event.target.closest('.delete-order');
+        if (deleteButton && deleteButton instanceof HTMLElement) {
+            const code = deleteButton.dataset.code;
             if (code) deleteOrder(code);
         }
     });
@@ -1286,7 +1891,16 @@ if (orderList) {
 if (newOrderBtn) newOrderBtn.addEventListener('click', showOrderForm);
 if (cancelOrderBtn) cancelOrderBtn.addEventListener('click', closeOrderForm);
 if (saveOrderBtn) saveOrderBtn.addEventListener('click', saveOrder);
-if (orderProductSelect) orderProductSelect.addEventListener('change', updateOrderTotal);
+if (orderProductSelect) {
+    orderProductSelect.addEventListener('change', () => {
+        populateBatchOptions();
+        updateOrderTotal();
+    });
+}
+
+if (orderBatchSelect) {
+    orderBatchSelect.addEventListener('change', updateOrderTotal);
+}
 if (orderQuantityInput) orderQuantityInput.addEventListener('input', updateOrderTotal);
 if (orderDiscountInput) orderDiscountInput.addEventListener('input', updateOrderTotal);
 if (orderFreightInput) orderFreightInput.addEventListener('input', updateOrderTotal);

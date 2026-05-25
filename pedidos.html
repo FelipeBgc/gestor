@@ -17,6 +17,7 @@
             <div class="button-row">
                 <button type="button" class="new-order-btn">Novo Pedido</button>
             </div>
+            <div id="order-unpaid-info" class="order-unpaid-info" aria-live="polite" style="margin-top:12px;"></div>
 
             <div id="order-form" class="card client-card hidden-field" style="margin-top:18px;">
                 <h2>Novo Pedido</h2>
@@ -51,6 +52,12 @@
                         <label>Produto</label>
                         <select class="order-product">
                             <option value="">-- selecione produto --</option>
+                        </select>
+                    </div>
+                    <div class="field order-batch-field hidden-field">
+                        <label>Lote</label>
+                        <select class="order-batch">
+                            <option value="">-- selecione lote --</option>
                         </select>
                     </div>
                     <div class="field">

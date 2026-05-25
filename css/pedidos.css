@@ -398,6 +398,25 @@ button:hover {
     background: #f8faff;
 }
 
+/* Destaque para pedidos não pagos */
+.inventory-table tbody tr.unpaid {
+    background: #fee2e2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+}
+.inventory-table tbody tr.unpaid td {
+    border-left: none;
+}
+.order-unpaid-info .order-unpaid-badge {
+    display: inline-block;
+    background: #fee2e2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    padding: 6px 10px;
+    border-radius: 12px;
+    font-weight: 700;
+}
+
 .inventory-empty td {
     text-align: center;
     color: #64748b;
@@ -585,36 +604,40 @@ button:hover {
 
     .finance-detail-list {
         display: grid;
-        gap: 14px;
+        gap: 10px;
     }
 
     .finance-detail-item {
-        border-radius: 18px;
+        border-radius: 14px;
         background: #f8fbff;
         border: 1px solid rgba(79, 70, 229, 0.12);
-        padding: 20px 22px;
+        padding: 12px 14px;
         display: grid;
-        gap: 10px;
+        gap: 8px;
     }
 
     .finance-detail-item strong {
         display: block;
         color: #1e293b;
+        font-size: 0.96rem;
     }
 
     .finance-detail-item span {
         color: #334155;
-        font-size: 0.95rem;
+        font-size: 0.88rem;
+        line-height: 1.4;
     }
 
     .finance-detail-info {
         color: var(--text-muted);
-        font-size: 0.95rem;
+        font-size: 0.88rem;
+        line-height: 1.4;
     }
 
     .finance-detail-item span {
         color: var(--text-muted);
-        font-size: 0.95rem;
+        font-size: 0.88rem;
+        line-height: 1.4;
     }
 
     .finance-month-field {

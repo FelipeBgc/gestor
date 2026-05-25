@@ -39,6 +39,13 @@
 
                 <div class="row">
                     <div class="field">
+                        <label>Onde foi comprado?</label>
+                        <input type="text" class="purchase-location" placeholder="Ex: Mercado X, Fornecedor Y" required />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="field">
                         <label>Tamanho (opcional)</label>
                         <input type="text" class="product-size" placeholder="Ex: P, M, G, 42" />
                     </div>
@@ -111,6 +118,37 @@
                         <div class="field">
                             <label>Quantas unidades deseja adicionar?</label>
                             <input type="number" class="existing-product-quantity" min="1" step="1" value="1" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="field">
+                            <label>Onde foi comprado?</label>
+                            <input type="text" class="existing-purchase-location" placeholder="Ex: Mercado X, Fornecedor Y" required />
+                        </div>
+                    </div>
+
+                    <div class="value-box">
+                        <strong>Custo e Lucro</strong>
+                        <div class="row">
+                            <div class="field">
+                                <label>Custo por unidade (R$)</label>
+                                <input type="number" class="existing-cost-price" min="0" step="0.01" placeholder="0,00" />
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="field">
+                                <label>Margem de lucro (%)</label>
+                                <input type="number" class="existing-profit-margin" min="0" step="0.1" placeholder="0" />
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="field">
+                                <label>Preço de venda sugerido (R$)</label>
+                                <input type="text" class="existing-selling-price" readonly value="R$ 0,00" />
+                            </div>
                         </div>
                     </div>
                 </div>

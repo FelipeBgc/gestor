@@ -581,36 +581,44 @@ button:hover {
 
     .finance-detail-list {
         display: grid;
-        gap: 14px;
+        gap: 10px;
+        border: 1px solid black;
+        max-height: 370px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        
     }
 
     .finance-detail-item {
-        border-radius: 18px;
         background: #f8fbff;
         border: 1px solid rgba(79, 70, 229, 0.12);
-        padding: 20px 22px;
-        display: grid;
-        gap: 10px;
+        padding: 3px 14px;
+        display: block;
+        gap: 8px;
     }
 
     .finance-detail-item strong {
         display: block;
         color: #1e293b;
+        font-size: 0.96rem;
     }
 
     .finance-detail-item span {
         color: #334155;
-        font-size: 0.95rem;
+        font-size: 0.88rem;
+        line-height: 1.4;
     }
 
     .finance-detail-info {
         color: var(--text-muted);
-        font-size: 0.95rem;
+        font-size: 0.88rem;
+        line-height: 1.4;
     }
 
     .finance-detail-item span {
         color: var(--text-muted);
-        font-size: 0.95rem;
+        font-size: 0.88rem;
+        line-height: 1.4;
     }
 
     .finance-month-field {
