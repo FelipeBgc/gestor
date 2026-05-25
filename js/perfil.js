@@ -9,9 +9,6 @@ const usernameInput = document.getElementById('profile-username');
 const shopNameInput = document.getElementById('profile-shop-name');
 const emailInput = document.getElementById('profile-email');
 const phoneInput = document.getElementById('profile-phone');
-const addressInput = document.getElementById('profile-address');
-const passwordInput = document.getElementById('profile-password');
-const confirmPasswordInput = document.getElementById('profile-confirm-password');
 const profileMessage = document.getElementById('profile-message');
 
 function getUsers() {
@@ -46,7 +43,6 @@ function loadProfile() {
     shopNameInput.value = user.shopName || '';
     emailInput.value = user.email || '';
     phoneInput.value = user.phone || '';
-    addressInput.value = user.address || '';
 }
 
 function showMessage(message, isError = false) {
@@ -67,17 +63,9 @@ profileForm?.addEventListener('submit', event => {
     const shopName = shopNameInput.value.trim();
     const email = emailInput.value.trim();
     const phone = phoneInput.value.trim();
-    const address = addressInput.value.trim();
-    const password = passwordInput.value;
-    const confirmPassword = confirmPasswordInput.value;
 
     if (!newUsername || !shopName) {
         showMessage('Preencha o nome do usuário e o nome da loja.', true);
-        return;
-    }
-
-    if (password && password !== confirmPassword) {
-        showMessage('As senhas não coincidem.', true);
         return;
     }
 
@@ -99,10 +87,6 @@ profileForm?.addEventListener('submit', event => {
     user.shopName = shopName;
     user.email = email;
     user.phone = phone;
-    user.address = address;
-    if (password) {
-        user.password = password;
-    }
 
     saveUsers(users);
     localStorage.setItem(currentUserKey, newUsername);
