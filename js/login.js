@@ -20,17 +20,6 @@ function saveUsers(users) {
     localStorage.setItem(usersKey, JSON.stringify(users));
 }
 
-function ensureDefaultUser() {
-    const users = getUsers();
-    if (users.length === 0) {
-        users.push({ username: 'admin', password: 'admin123', shopName: 'Minha Loja' });
-        saveUsers(users);
-    }
-    return users;
-}
-
-ensureDefaultUser();
-
 if (localStorage.getItem(authKey) === 'true') {
     window.location.replace('gestor.html');
 }
