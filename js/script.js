@@ -1,4 +1,5 @@
 const inventoryKey = 'gestorInventory';
+const productImagesKey = 'gestorProductImages';
 const inventorySearch = document.getElementById('inventory-search');
 const inventoryItems = document.getElementById('inventory-items');
 const inventoryCount = document.getElementById('inventory-count');
@@ -200,6 +201,7 @@ window.addEventListener('DOMContentLoaded', () => {
     setupLogoutButtons();
     displayLoggedUser();
     initializeInvestment();
+    migrateProductImages(); // Migrar imagens antigas para novo storage
     if (currentPage === 'cadastrar.html') {
         initializeProductMode();
     }
@@ -236,6 +238,36 @@ function setInventoryData(data) {
     localStorage.setItem(getUserStorageKey(inventoryKey), JSON.stringify(data));
 }
 
+function getProductImagesData() {
+    try {
+        return JSON.parse(localStorage.getItem(getUserStorageKey(productImagesKey)) || '{}');
+    } catch {
+        return {};
+    }
+}
+
+function setProductImagesData(data) {
+    localStorage.setItem(getUserStorageKey(productImagesKey), JSON.stringify(data));
+}
+
+function getProductImageKey(product, size) {
+    return `${(product || '').trim().toLowerCase()}||${(size || '').trim().toLowerCase()}`;
+}
+
+function saveProductImage(product, size, imageData) {
+    if (!imageData) return;
+    const images = getProductImagesData();
+    const key = getProductImageKey(product, size);
+    images[key] = imageData;
+    setProductImagesData(images);
+}
+
+function getProductImage(product, size) {
+    const images = getProductImagesData();
+    const key = getProductImageKey(product, size);
+    return images[key] || null;
+}
+
 function getInvestmentData() {
     const value = localStorage.getItem(getUserStorageKey(investmentKey));
     const amount = parseFloat(value);
@@ -256,6 +288,30 @@ function initializeInvestment() {
     const inventoryData = getInventoryData();
     const initialInvestment = inventoryData.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
     setInvestmentData(initialInvestment);
+}
+
+function migrateProductImages() {
+    // Migrar imagens armazenadas em lotes antigos para o novo storage separado
+    const inventoryData = getInventoryData();
+    const images = getProductImagesData();
+    let migrated = false;
+
+    inventoryData.forEach((item) => {
+        if (item.image) {
+            const key = getProductImageKey(item.product, item.size);
+            if (!images[key]) {
+                images[key] = item.image;
+                migrated = true;
+            }
+            // Remover imagem do lote para economizar espaço
+            delete item.image;
+        }
+    });
+
+    if (migrated) {
+        setProductImagesData(images);
+        setInventoryData(inventoryData);
+    }
 }
 
 function checkInventoryWarning() {
@@ -377,7 +433,7 @@ function renderInventory(filter = '') {
             if (lowStock) {
                 row.classList.add('low-stock');
             }
-            const thumbSrc = group.batches && group.batches[0] && group.batches[0].image ? group.batches[0].image : '';
+            const thumbSrc = getProductImage(group.product, group.size) || '';
             row.innerHTML = `
                 <td data-label="Foto"><img src="${thumbSrc}" class="inventory-thumb" alt="Foto"/></td>
                 <td data-label="Produto">${group.product}</td>
@@ -841,11 +897,15 @@ function addNewProduct() {
         size,
         quantity,
         total,
-        image: currentProductImageData || null,
         costPrice: parseFloat(costPriceInput.value) || 0,
         profitMargin: parseFloat(profitMarginInput.value) || 0,
         sellingPrice: sellingPrice || 0
     });
+
+    // Salvar foto no storage separado (não no lote)
+    if (currentProductImageData) {
+        saveProductImage(product, size, currentProductImageData);
+    }
 
     addInvestment(total);
     setInventoryData(inventoryData);
