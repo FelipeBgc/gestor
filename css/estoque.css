@@ -569,6 +569,63 @@ button:hover {
         margin-top: 28px;
     }
 
+    /* Miniatura do produto na tabela de estoque */
+    .inventory-thumb {
+        width: 48px;
+        height: 48px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+    }
+
+    /* Lightbox / modal */
+    .image-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+    }
+    .image-modal-overlay img {
+        max-width: 92%;
+        max-height: 92%;
+        border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    }
+    .image-modal-overlay .close-hint {
+        position: fixed;
+        top: 18px;
+        right: 18px;
+        color: #fff;
+        font-weight: 700;
+        background: rgba(0,0,0,0.35);
+        padding: 8px 12px;
+        border-radius: 8px;
+    }
+
+    /* Close button */
+    .image-modal-overlay .close-btn {
+        position: fixed;
+        top: 12px;
+        right: 12px;
+        background: rgba(0,0,0,0.6);
+        color: #fff;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 10px;
+        font-weight: 700;
+        cursor: pointer;
+        z-index: 2010;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .image-modal-overlay .close-btn:hover {
+        background: rgba(0,0,0,0.8);
+    }
+
     .finance-chart-card {
         margin-top: 28px;
         background: rgba(255, 255, 255, 0.98);

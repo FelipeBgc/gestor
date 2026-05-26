@@ -800,6 +800,16 @@ dialog.select-product-dialog::backdrop {
         margin-top: 28px;
     }
 
+    /* Preview image in cadastro */
+    .preview-image {
+        width: 140px;
+        height: 140px;
+        object-fit: cover;
+        border-radius: 12px;
+        margin-top: 10px;
+        border: 1px solid var(--border);
+    }
+
     .finance-chart-card {
         margin-top: 28px;
         background: rgba(255, 255, 255, 0.98);

@@ -18,6 +18,9 @@ const sellingPriceInput = document.querySelector('.selling-price');
 const existingCostPriceInput = document.querySelector('.existing-cost-price');
 const existingProfitMarginInput = document.querySelector('.existing-profit-margin');
 const existingSellingPriceInput = document.querySelector('.existing-selling-price');
+const productImageInput = document.querySelector('.product-image-input');
+const productPreview = document.getElementById('product-preview');
+let currentProductImageData = null;
 const menuToggle = document.getElementById('menu-toggle');
 const sidebar = document.getElementById('sidebar');
 const sidebarClose = document.getElementById('sidebar-close');
@@ -108,6 +111,31 @@ function getCurrentUser() {
     return localStorage.getItem(currentUserKey) || '';
 }
 
+// Image input handling (pré-visualização e leitura como base64)
+if (productImageInput) {
+    productImageInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) {
+            currentProductImageData = null;
+            if (productPreview) {
+                productPreview.src = '';
+                productPreview.style.display = 'none';
+            }
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            currentProductImageData = reader.result;
+            if (productPreview) {
+                productPreview.src = currentProductImageData;
+                productPreview.style.display = 'block';
+            }
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
 function getUserKeySuffix() {
     const user = getCurrentUser().trim();
     return user ? encodeURIComponent(user.toLowerCase()) : '';
@@ -174,6 +202,10 @@ window.addEventListener('DOMContentLoaded', () => {
     initializeInvestment();
     if (currentPage === 'cadastrar.html') {
         initializeProductMode();
+    }
+    // Inicializa listener para abrir modal de imagem no estoque
+    if (currentPage === 'estoque.html') {
+        initializeImageModalHandlers();
     }
 });
 
@@ -269,6 +301,12 @@ function resetForm() {
     if (existingCostPriceInput) existingCostPriceInput.value = '';
     if (existingProfitMarginInput) existingProfitMarginInput.value = '';
     if (existingSellingPriceInput) existingSellingPriceInput.value = formatMoney(0);
+    if (productImageInput) productImageInput.value = '';
+    currentProductImageData = null;
+    if (productPreview) {
+        productPreview.src = '';
+        productPreview.style.display = 'none';
+    }
     orderNameInput.focus();
 }
 
@@ -324,7 +362,9 @@ function renderInventory(filter = '') {
             if (lowStock) {
                 row.classList.add('low-stock');
             }
+            const thumbSrc = group.batches && group.batches[0] && group.batches[0].image ? group.batches[0].image : '';
             row.innerHTML = `
+                <td data-label="Foto"><img src="${thumbSrc}" class="inventory-thumb" alt="Foto"/></td>
                 <td data-label="Produto">${group.product}</td>
                 <td data-label="Detalhes">${group.details || '—'}</td>
                 <td data-label="Tamanho">${group.size || '—'}</td>
@@ -362,6 +402,53 @@ function renderInventory(filter = '') {
 
     inventoryCount.textContent = groupedItems.length;
     checkInventoryWarning();
+}
+
+function initializeImageModalHandlers() {
+    if (!inventoryItems) return;
+    inventoryItems.addEventListener('click', (e) => {
+        const img = e.target.closest && e.target.closest('.inventory-thumb');
+        if (!img) return;
+        const src = img.getAttribute('src');
+        if (!src) return;
+        showImageModal(src, img.alt || 'Foto do produto');
+    });
+}
+
+function showImageModal(src, alt) {
+    // evitar múltiplos modais
+    if (document.querySelector('.image-modal-overlay')) return;
+    const overlay = document.createElement('div');
+    overlay.className = 'image-modal-overlay';
+    overlay.tabIndex = -1;
+
+    const img = document.createElement('img');
+    img.src = src;
+    img.alt = alt || '';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'close-btn';
+    closeBtn.setAttribute('aria-label', 'Fechar imagem');
+    closeBtn.textContent = '✕';
+    closeBtn.addEventListener('click', () => close());
+
+    overlay.appendChild(img);
+    overlay.appendChild(closeBtn);
+    document.body.appendChild(overlay);
+
+    function close() {
+        overlay.remove();
+        document.removeEventListener('keydown', onKey);
+    }
+
+    function onKey(ev) {
+        if (ev.key === 'Escape') close();
+    }
+
+    overlay.addEventListener('click', (ev) => {
+        if (ev.target === overlay) close();
+    });
+    document.addEventListener('keydown', onKey);
 }
 
 function hideBatchPanel() {
@@ -653,6 +740,7 @@ function addNewProduct() {
         size,
         quantity,
         total,
+        image: currentProductImageData || null,
         costPrice: parseFloat(costPriceInput.value) || 0,
         profitMargin: parseFloat(profitMarginInput.value) || 0,
         sellingPrice: sellingPrice || 0
