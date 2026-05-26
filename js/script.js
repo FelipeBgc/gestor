@@ -207,6 +207,21 @@ window.addEventListener('DOMContentLoaded', () => {
     if (currentPage === 'estoque.html') {
         initializeImageModalHandlers();
     }
+    // Garantir listeners do formulário de cadastro (compatibilidade desktop e mobile)
+    if (addStockBtn) {
+        const onAdd = (ev) => {
+            try { ev.preventDefault(); } catch (e) {}
+            addStock();
+        };
+        addStockBtn.addEventListener('click', onAdd);
+        addStockBtn.addEventListener('touchend', onAdd, { passive: true });
+    }
+    [unitPriceInput, quantityInput, costPriceInput, profitMarginInput].forEach(input => {
+        if (input) input.addEventListener('input', updateValues);
+    });
+    [existingCostPriceInput, existingProfitMarginInput].forEach(input => {
+        if (input) input.addEventListener('input', updateExistingValues);
+    });
 });
 
 function getInventoryData() {
@@ -690,6 +705,12 @@ function selectAnotherProduct() {
 }
 
 function addStock() {
+    // Se o usuário não escolheu modo (comportamento observado em alguns dispositivos móveis),
+    // assumir "novo produto" como fallback para que o botão funcione previsivelmente.
+    if (currentProductMode === null) {
+        switchToNewProduct();
+    }
+
     if (currentProductMode === 'new') {
         addNewProduct();
     } else if (currentProductMode === 'existing') {
@@ -815,13 +836,7 @@ function addUnitsToExistingProduct() {
 }
 
 if (addStockBtn) {
-    addStockBtn.addEventListener('click', addStock);
-    [unitPriceInput, quantityInput, costPriceInput, profitMarginInput].forEach(input => {
-        if (input) input.addEventListener('input', updateValues);
-    });
-    [existingCostPriceInput, existingProfitMarginInput].forEach(input => {
-        if (input) input.addEventListener('input', updateExistingValues);
-    });
+    // listeners serão adicionados no DOMContentLoaded para compatibilidade mobile
 }
 
 // Mode selector buttons
