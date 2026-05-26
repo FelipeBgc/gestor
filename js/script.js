@@ -393,7 +393,7 @@ function renderInventory(filter = '') {
                 viewLotsButton.type = 'button';
                 viewLotsButton.className = 'table-action-btn';
                 viewLotsButton.textContent = 'Ver lotes';
-                viewLotsButton.addEventListener('click', () => showBatchSellingPrices(group.product, group.size));
+                viewLotsButton.addEventListener('click', () => showBatchSellingPrices(group.product, group.size, { allowDelete: true }));
                 priceCell.appendChild(viewLotsButton);
             } else if (group.batches.length === 1) {
                 const sellingPrice = parseFloat(group.batches[0].sellingPrice) || 0;
@@ -471,24 +471,104 @@ function hideBatchPanel() {
 }
 
 function showBatchSellingPrices(product, size, options = {}) {
+    // Redireciona para o modal de lotes (com possibilidade de exclusão via options.allowDelete)
+    showBatchListPage(product, size, options);
+}
+
+function showBatchListPage(product, size, options = {}) {
     const inventoryData = getInventoryData();
     const batches = inventoryData
+        .map((item, index) => ({ ...item, batchIndex: index }))
         .filter(item => item.product === product && item.size === size && (parseInt(item.quantity, 10) || 0) > 0);
-
-    const header = `${product}${size ? ` (${size})` : ''}`;
 
     if (batches.length === 0) {
         alert('Nenhum lote encontrado para este produto.');
         return;
     }
 
-    const lines = batches.map((batch, idx) => {
-        const costInfo = batch.costPrice ? ` / Custo ${formatMoney(batch.costPrice)}` : '';
-        const marginInfo = batch.profitMargin ? ` / Lucro ${batch.profitMargin}%` : '';
-        return `${idx + 1}. Qtd ${batch.quantity} — ${formatMoney(batch.sellingPrice || 0)}${costInfo}${marginInfo}`;
-    });
+    // Evitar múltiplos modais
+    if (document.querySelector('.batches-modal-overlay')) return;
 
-    alert(`Preços de venda para ${header}:\n\n${lines.join('\n')}`);
+    const overlay = document.createElement('div');
+    overlay.className = 'batches-modal-overlay';
+
+    const container = document.createElement('div');
+    container.className = 'batches-modal-container';
+
+    const header = document.createElement('div');
+    header.className = 'batches-modal-header';
+    header.innerHTML = `<strong>Lotes de ${product}${size ? ` (${size})` : ''}</strong>`;
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'close-btn';
+    closeBtn.setAttribute('aria-label', 'Fechar lista de lotes');
+    closeBtn.textContent = '✕';
+    closeBtn.addEventListener('click', () => overlay.remove());
+
+    const list = document.createElement('div');
+    list.className = 'batches-list';
+
+    function renderList() {
+        list.innerHTML = '';
+        const fresh = getInventoryData()
+            .map((item, index) => ({ ...item, batchIndex: index }))
+            .filter(item => item.product === product && item.size === size && (parseInt(item.quantity, 10) || 0) > 0);
+
+        if (fresh.length === 0) {
+            list.innerHTML = '<p>Nenhum lote disponível.</p>';
+            return;
+        }
+
+        fresh.forEach((batch, idx) => {
+            const itemEl = document.createElement('div');
+            itemEl.className = 'batch-item';
+            itemEl.innerHTML = `
+                <div class="batch-info">
+                    <div><strong>Lote ${idx + 1}</strong></div>
+                    <div>Qtd: ${batch.quantity}</div>
+                    <div>Total: ${formatMoney(batch.total)}</div>
+                    <div>Custo/unid: ${batch.costPrice ? formatMoney(batch.costPrice) : '—'}</div>
+                    <div>Compra: ${batch.purchaseLocation || '—'}</div>
+                </div>
+            `;
+
+            if (options.allowDelete) {
+                const delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.className = 'table-action-btn delete-btn';
+                delBtn.textContent = 'Excluir lote';
+                delBtn.addEventListener('click', () => {
+                    const confirmed = confirm(`Deseja excluir o Lote ${idx + 1} (Qtd ${batch.quantity})?`);
+                    if (!confirmed) return;
+                    const inv = getInventoryData();
+                    // Encontrar índice real no inventário via batch.batchIndex
+                    const realIndex = batch.batchIndex;
+                    if (realIndex == null) return;
+                    inv.splice(realIndex, 1);
+                    setInventoryData(inv);
+                    renderInventory(inventorySearch ? inventorySearch.value : '');
+                    renderFinance();
+                    renderList();
+                });
+                itemEl.appendChild(delBtn);
+            }
+
+            list.appendChild(itemEl);
+        });
+    }
+
+    container.appendChild(header);
+    container.appendChild(closeBtn);
+    container.appendChild(list);
+    overlay.appendChild(container);
+    document.body.appendChild(overlay);
+
+    renderList();
+
+    // fechar ao clicar fora
+    overlay.addEventListener('click', (ev) => {
+        if (ev.target === overlay) overlay.remove();
+    });
 }
 
 function deleteGroupedInventoryItem(product, size) {
