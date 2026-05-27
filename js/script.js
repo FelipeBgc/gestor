@@ -155,16 +155,6 @@ function getUserStorageKey(baseKey) {
 
 const loginPage = 'login.html';
 
-const isLoggedIn = () => localStorage.getItem(authKey) === 'true';
-const currentPage = window.location.pathname.split('/').pop();
-
-if (currentPage !== loginPage && !isLoggedIn()) {
-    window.location.replace(loginPage);
-}
-
-if (currentPage === loginPage && isLoggedIn()) {
-    window.location.replace('gestor.html');
-}
 
 function setupLogoutButtons() {
     const logoutButtons = document.querySelectorAll('.logout-button');
