@@ -1,3 +1,5 @@
+import { createInventoryItem, createClientRecord, upsertOrder, recordInvestment, createAgendaEventRow, deleteAgendaEventRow } from './supabase-data.js';
+
 const inventoryKey = 'gestorInventory';
 const inventorySearch = document.getElementById('inventory-search');
 const inventoryItems = document.getElementById('inventory-items');
@@ -231,9 +233,15 @@ function setInvestmentData(value) {
     localStorage.setItem(getUserStorageKey(investmentKey), Number(value || 0).toFixed(2));
 }
 
-function addInvestment(amount) {
+async function addInvestment(amount) {
     const current = getInvestmentData();
-    setInvestmentData(current + (parseFloat(amount) || 0));
+    const value = current + (parseFloat(amount) || 0);
+    setInvestmentData(value);
+    try {
+        await recordInvestment(amount, 'Investimento de estoque');
+    } catch (error) {
+        console.error('Erro ao registrar investimento no Supabase:', error);
+    }
 }
 
 function initializeInvestment() {
@@ -689,15 +697,15 @@ function selectAnotherProduct() {
     if (modeSelector) modeSelector.classList.remove('hidden-section');
 }
 
-function addStock() {
+async function addStock() {
     if (currentProductMode === 'new') {
-        addNewProduct();
+        await addNewProduct();
     } else if (currentProductMode === 'existing') {
-        addUnitsToExistingProduct();
+        await addUnitsToExistingProduct();
     }
 }
 
-function addNewProduct() {
+async function addNewProduct() {
     if (!orderNameInput) return;
 
     const product = orderNameInput.value.trim() || 'Produto não informado';
@@ -733,7 +741,7 @@ function addNewProduct() {
         // Caso exista mesmo nome mas tamanhos diferentes, permite salvar (variação)
     }
 
-    inventoryData.push({
+    const newItem = {
         product,
         details,
         purchaseLocation,
@@ -743,11 +751,18 @@ function addNewProduct() {
         image: currentProductImageData || null,
         costPrice: parseFloat(costPriceInput.value) || 0,
         profitMargin: parseFloat(profitMarginInput.value) || 0,
-        sellingPrice: sellingPrice || 0
-    });
+        sellingPrice: sellingPrice || 0,
+        created: new Date().toISOString()
+    };
 
-    addInvestment(total);
+    inventoryData.push(newItem);
+    await addInvestment(total);
     setInventoryData(inventoryData);
+    try {
+        await createInventoryItem(newItem);
+    } catch (error) {
+        console.error('Erro ao sincronizar estoque com Supabase:', error);
+    }
     renderInventory(inventorySearch ? inventorySearch.value : '');
     populateProductOptions();
     resetForm();
@@ -756,7 +771,7 @@ function addNewProduct() {
     alert('✅ Produto adicionado ao estoque com sucesso!');
 }
 
-function addUnitsToExistingProduct() {
+async function addUnitsToExistingProduct() {
     if (selectedExistingProductIndex === null) {
         alert('Selecione um produto primeiro.');
         return;
@@ -792,7 +807,7 @@ function addUnitsToExistingProduct() {
     const addedTotal = existingCost * quantity;
     const updatedSellingPrice = existingCost * (1 + existingProfitMargin / 100);
 
-    inventoryData.push({
+    const newItem = {
         product: selectedGroup.product,
         details: selectedGroup.details,
         purchaseLocation,
@@ -801,12 +816,19 @@ function addUnitsToExistingProduct() {
         total: addedTotal,
         costPrice: existingCost,
         profitMargin: existingProfitMargin,
-        sellingPrice: updatedSellingPrice
-    });
+        sellingPrice: updatedSellingPrice,
+        created: new Date().toISOString()
+    };
 
-    addInvestment(addedTotal);
-
+    inventoryData.push(newItem);
+    await addInvestment(addedTotal);
     setInventoryData(inventoryData);
+    try {
+        await createInventoryItem(newItem);
+    } catch (error) {
+        console.error('Erro ao sincronizar estoque com Supabase:', error);
+    }
+
     renderInventory(inventorySearch ? inventorySearch.value : '');
     populateProductOptions();
     initializeProductMode();
@@ -947,7 +969,7 @@ function toggleClientType() {
     });
 }
 
-function addClient() {
+async function addClient() {
     if (!clientNameInput) return;
     const name = clientNameInput.value.trim();
     if (!name) { alert('Nome do cliente é obrigatório.'); clientNameInput.focus(); return; }
@@ -964,9 +986,15 @@ function addClient() {
     const birthday = clientBirthdayInput ? clientBirthdayInput.value : '';
     const notes = clientNotesInput ? clientNotesInput.value.trim() : '';
 
+    const client = { name, source, type, cpf, cnpj, razao, phone, address, birthday, notes, created: new Date().toISOString() };
     const clients = getClientsData();
-    clients.push({ name, source, type, cpf, cnpj, razao, phone, address, birthday, notes, created: new Date().toISOString() });
+    clients.push(client);
     setClientsData(clients);
+    try {
+        await createClientRecord(client);
+    } catch (error) {
+        console.error('Erro ao sincronizar cliente com Supabase:', error);
+    }
     renderClients(clientsSearch ? clientsSearch.value : '');
     populateClientOptions();
     resetClientForm();
@@ -1230,21 +1258,39 @@ function getEventsForDate(date) {
     return getAgendaData().filter(event => event.date === key);
 }
 
-function addAgendaEvent(date, note) {
+async function addAgendaEvent(date, note) {
+    const created = new Date().toISOString();
     const events = getAgendaData();
-    events.push({ date: getAgendaKey(date), note, created: new Date().toISOString() });
+    events.push({ date: getAgendaKey(date), note, created });
     setAgendaData(events);
+    try {
+        await createAgendaEventRow(date, note, created);
+    } catch (error) {
+        console.error('Erro ao sincronizar evento de agenda com Supabase:', error);
+    }
 }
 
-function deleteAgendaEvent(date, eventIndex) {
+async function deleteAgendaEvent(date, eventIndex) {
     const key = getAgendaKey(date);
     let removeIndex = -1;
+    let deletedEvent = null;
     const events = getAgendaData().filter(event => {
         if (event.date !== key) return true;
         removeIndex += 1;
-        return removeIndex !== eventIndex;
+        if (removeIndex === eventIndex) {
+            deletedEvent = event;
+            return false;
+        }
+        return true;
     });
     setAgendaData(events);
+    if (deletedEvent?.created) {
+        try {
+            await deleteAgendaEventRow(date, deletedEvent.created);
+        } catch (error) {
+            console.error('Erro ao excluir evento da agenda no Supabase:', error);
+        }
+    }
 }
 
 function getPaymentDueEvents() {
@@ -1552,7 +1598,7 @@ function resetOrderForm() {
     toggleOrderPayment();
 }
 
-function saveOrder() {
+async function saveOrder() {
     if (!orderCodeInput) return;
     const code = orderCodeInput.value || generateOrderCode();
     const date = (orderDateInput?.value && orderDateInput.value.trim()) || new Date().toLocaleDateString('pt-BR');
@@ -1572,9 +1618,15 @@ function saveOrder() {
         }
         clientName = newName;
         // salvar novo cliente nos cadastros
+        const client = { name: newName, source: '', type: 'pf', cpf: '', cnpj: '', razao: '', phone: '', address: '', birthday: '', notes: '', created: new Date().toISOString() };
         const clients = getClientsData();
-        clients.push({ name: newName, source: '', type: 'pf', cpf: '', cnpj: '', razao: '', phone: '', address: '', birthday: '', notes: '', created: new Date().toISOString() });
+        clients.push(client);
         setClientsData(clients);
+        try {
+            await createClientRecord(client);
+        } catch (error) {
+            console.error('Erro ao sincronizar novo cliente do pedido com Supabase:', error);
+        }
         renderClients(clientsSearch ? clientsSearch.value : '');
         populateClientOptions();
     } else {
@@ -1679,6 +1731,7 @@ function saveOrder() {
         clientName,
         productName,
         productSize,
+        batch: selectedBatch?.batch || '',
         batchInventoryIndex,
         quantity,
         discount,
@@ -1705,6 +1758,11 @@ function saveOrder() {
         orders.push({ ...orderObject, created: new Date().toISOString() });
     }
     setOrdersData(orders);
+    try {
+        await upsertOrder(orderObject);
+    } catch (error) {
+        console.error('Erro ao sincronizar pedido com Supabase:', error);
+    }
     renderOrders(ordersSearch ? ordersSearch.value : '');
     resetOrderForm();
     if (orderFormEl) orderFormEl.classList.add('hidden-field');

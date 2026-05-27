@@ -1,6 +1,8 @@
-const usersKey = 'gestorUsers';
+﻿import { createUser, getUserByUsername, hashPassword } from './supabase.js';
+
 const authKey = 'gestorLoggedIn';
 const currentUserKey = 'gestorCurrentUser';
+const currentUserIdKey = 'gestorCurrentUserId';
 const currentShopKey = 'gestorCurrentShop';
 
 const registerForm = document.getElementById('register-form');
@@ -10,23 +12,11 @@ const passwordInput = document.getElementById('new-password');
 const confirmPasswordInput = document.getElementById('confirm-password');
 const registerMessage = document.getElementById('register-message');
 
-function getUsers() {
-    try {
-        return JSON.parse(localStorage.getItem(usersKey) || '[]');
-    } catch {
-        return [];
-    }
-}
-
-function saveUsers(users) {
-    localStorage.setItem(usersKey, JSON.stringify(users));
-}
-
 if (localStorage.getItem(authKey) === 'true') {
     window.location.replace('gestor.html');
 }
 
-registerForm?.addEventListener('submit', event => {
+registerForm?.addEventListener('submit', async event => {
     event.preventDefault();
     const username = usernameInput?.value.trim();
     const shopName = shopNameInput?.value.trim();
@@ -43,20 +33,29 @@ registerForm?.addEventListener('submit', event => {
         return;
     }
 
-    const users = getUsers();
-    const exists = users.some(user => user.username.toLowerCase() === username.toLowerCase());
+    try {
+        const existingUser = await getUserByUsername(username);
+        if (existingUser) {
+            showError('Usuário já existe. Escolha outro nome.');
+            return;
+        }
 
-    if (exists) {
-        showError('Usuário já existe. Escolha outro nome.');
-        return;
+        const passwordHash = await hashPassword(password);
+        const user = await createUser({
+            username,
+            shop_name: shopName,
+            password_hash: passwordHash
+        });
+
+        localStorage.setItem(authKey, 'true');
+        localStorage.setItem(currentUserKey, username);
+        localStorage.setItem(currentUserIdKey, user?.id || '');
+        localStorage.setItem(currentShopKey, shopName);
+        window.location.replace('gestor.html');
+    } catch (error) {
+        showError('Erro ao registrar. Tente novamente.');
+        console.error('Registration error:', error);
     }
-
-    users.push({ username, password, shopName });
-    saveUsers(users);
-    localStorage.setItem(authKey, 'true');
-    localStorage.setItem(currentUserKey, username);
-    localStorage.setItem(currentShopKey, shopName);
-    window.location.replace('gestor.html');
 });
 
 function showError(message) {
