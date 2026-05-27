@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Redirecionando...</title>
+    <meta http-equiv="refresh" content="0;url=gestor.html">
+    <script>
+      // Fallback JS redirect (mais suave em alguns hosts)
+      (function(){
+        try {
+          if (location.pathname === '/' || location.pathname.endsWith('index.html')) {
+            location.replace('gestor.html');
+          }
+        } catch(e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <p>Redirecionando para o gestor… <a href="gestor.html">Clique aqui se não for redirecionado</a></p>
+  </body>
+</html>

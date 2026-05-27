@@ -1,6 +1,12 @@
 {
   "version": 2,
+  "public": true,
+  "buildCommand": "echo 'Static site - no build needed'",
+  "outputDirectory": ".",
   "routes": [
-    { "src": "^/$", "dest": "/login.html" }
+    { "src": "^/$", "dest": "/gestor.html" },
+    { "src": "^/index.html$", "dest": "/gestor.html" },
+    { "src": "^/([^.]+)$", "dest": "/$1.html" },
+    { "src": "/(.*)", "dest": "/$1" }
   ]
 }
