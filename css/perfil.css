@@ -152,13 +152,8 @@ button:hover {
     display: none;
 }
 
-#shop-name {
-    display: inline-block;
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    font-weight: 700;
-    color: var(--text);
+.logged-user {
+  display: none;
 }
 
 @media (max-width: 760px) {
@@ -176,8 +171,8 @@ button:hover {
         justify-content: center;
     }
 
-     #shop-name {
-        display: inline-block;
+     .logged-user {
+        display: none;
     }
 
     .container h1{
@@ -197,7 +192,7 @@ button:hover {
         top: 16px;
     }
 
-    #shop-name {
+    .logged-user {
         top: 16px;
         right: 76px;
         font-size: 0.9rem;

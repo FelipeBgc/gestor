@@ -11,7 +11,7 @@
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <span>Menu</span>
-            <strong id="shop-name"></strong>
+            <span class="logged-user">Loja: <strong id="shop-name"></strong></span>
             <button class="logout-button" id="logout-button" aria-label="Sair">Sair</button>
             <button class="sidebar-close" id="sidebar-close" aria-label="Fechar menu">×</button>
         </div>
@@ -28,61 +28,22 @@
     </aside>
     <div class="sidebar-overlay" id="sidebar-overlay"></div>
     <div class="container">
-        <header>
-            <h1>Gestão da Loja</h1>
-        </header>
-        <main>
-            <div class="shortcut-grid" id="shortcut-grid">
-                <a href="cadastrar.html" class="shortcut-button">
-                    <span class="shortcut-icon">➕</span>
-                    <span>Cadastrar produto</span>
-                </a>
-                <a href="estoque.html" class="shortcut-button">
-                    <span class="shortcut-icon">📦</span>
-                    <span>Estoque</span>
-                </a>
-                <a href="clientes.html" class="shortcut-button">
-                    <span class="shortcut-icon">👥</span>
-                    <span>Clientes</span>
-                </a>
-                <a href="pedidos.html" class="shortcut-button">
-                    <span class="shortcut-icon">🧾</span>
-                    <span>Pedidos</span>
-                </a>
-                <a href="agenda.html" class="shortcut-button">
-                    <span class="shortcut-icon">📅</span>
-                    <span>Agenda</span>
-                </a>
-                <a href="financas.html" class="shortcut-button">
-                    <span class="shortcut-icon">💰</span>
-                    <span>Finanças</span>
-                </a>
+        <h1>Gestão da Loja</h1>
+        <div class="card">
+            <h2>Atalhos</h2>
+            <p>Abra rapidamente cada página principal do sistema.</p>
+            <div class="shortcut-grid">
+                <button type="button" class="shortcut-button" onclick="location.href='gestor.html'"><span class="shortcut-icon">🏠</span>Início</button>
+                <button type="button" class="shortcut-button" onclick="location.href='perfil.html'"><span class="shortcut-icon">👤</span>Perfil</button>
+                <button type="button" class="shortcut-button" onclick="location.href='cadastrar.html'"><span class="shortcut-icon">🛒</span>Cadastrar produto</button>
+                <button type="button" class="shortcut-button" onclick="location.href='estoque.html'"><span class="shortcut-icon">📦</span>Estoque</button>
+                <button type="button" class="shortcut-button" onclick="location.href='clientes.html'"><span class="shortcut-icon">👥</span>Clientes</button>
+                <button type="button" class="shortcut-button" onclick="location.href='pedidos.html'"><span class="shortcut-icon">🧾</span>Pedidos</button>
+                <button type="button" class="shortcut-button" onclick="location.href='agenda.html'"><span class="shortcut-icon">📅</span>Agenda</button>
+                <button type="button" class="shortcut-button" onclick="location.href='financas.html'"><span class="shortcut-icon">💰</span>Finanças</button>
             </div>
-
-            <section class="dashboard" style="margin-top: 32px;">
-                <h2>Dashboard</h2>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <h3>Total de Produtos</h3>
-                        <p class="stat-value" id="total-products">0</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Total de Clientes</h3>
-                        <p class="stat-value" id="total-clients">0</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Pedidos Pendentes</h3>
-                        <p class="stat-value" id="pending-orders">0</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Faturamento Mês</h3>
-                        <p class="stat-value" id="monthly-revenue">R$ 0,00</p>
-                    </div>
-                </div>
-            </section>
-        </main>
+        </div>
     </div>
-    <script type="module" src="js/script.js"></script>
     <script type="module" src="js/gestor.js"></script>
 </body>
 </html>

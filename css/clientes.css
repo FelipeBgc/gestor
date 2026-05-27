@@ -1047,7 +1047,7 @@ button:hover {
     transform: translateY(-1px);
 }
 
-#shop-name {
+.logged-user {
     position: absolute;
     top: 30px;
     right: 138px;
@@ -1061,7 +1061,6 @@ button:hover {
     max-width: calc(100% - 220px);
     text-align: right;
 }
-#shop-name {
+.logged-user strong {
     color: #111827;
 }
-
