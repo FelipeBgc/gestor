@@ -1,48 +1,35 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perfil</title>
-    <link rel="stylesheet" href="css/perfil.css">
+    <title>Registrar</title>
+    <link rel="stylesheet" href="css/register.css">
 </head>
 <body>
-    <button class="back-button" onclick="history.back()" aria-label="Voltar para página anterior">←</button>
-    <button class="logout-button" id="logout-button" aria-label="Sair">Sair</button>
-    <span class="logged-user">Loja: <strong id="shop-name"></strong></span>
-    <div class="container">
-        <h1>Perfil</h1>
-        <div class="card">
-            <form id="profile-form">
-                <div class="row">
-                    <div class="field">
-                        <label for="profile-username">Nome do usuário</label>
-                        <input type="text" id="profile-username" required placeholder="Nome de login" />
-                    </div>
-                    <div class="field">
-                        <label for="profile-shop-name">Nome da loja</label>
-                        <input type="text" id="profile-shop-name" required placeholder="Nome da sua loja" />
-                    </div>
-                </div>
+    <div class="register-page">
+        <div class="register-card">
+            <h1>Registrar</h1>
+            <p>Crie sua conta para gerenciar sua loja.</p>
+            <form id="register-form">
+                <label for="new-username">Usuário</label>
+                <input type="text" id="new-username" placeholder="Digite seu usuário" required>
 
-                <div class="row">
-                    <div class="field">
-                        <label for="profile-email">Email</label>
-                        <input type="email" id="profile-email" placeholder="seu@email.com" />
-                    </div>
-                    <div class="field">
-                        <label for="profile-phone">Telefone</label>
-                        <input type="tel" id="profile-phone" placeholder="(00) 00000-0000" />
-                    </div>
-                </div>
+                <label for="shop-name">Nome da loja</label>
+                <input type="text" id="shop-name" placeholder="Digite o nome da loja" required>
 
-                <div class="actions">
-                    <button type="submit">Salvar perfil</button>
-                </div>
-                <div class="message" id="profile-message"></div>
+                <label for="new-password">Senha</label>
+                <input type="password" id="new-password" placeholder="Digite sua senha" required>
+
+                <label for="confirm-password">Confirmar senha</label>
+                <input type="password" id="confirm-password" placeholder="Confirme sua senha" required>
+
+                <div id="register-message" class="register-message"></div>
+                <button type="submit">Registrar</button>
             </form>
+            <p class="login-info">Já tem conta? <a href="login.html">Entrar</a></p>
         </div>
     </div>
-    <script type="module" src="js/perfil.js"></script>
+    <script type="module" src="js/register.js"></script>
 </body>
 </html>
