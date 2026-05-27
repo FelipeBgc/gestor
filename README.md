@@ -1,4 +1,4 @@
-﻿# Deploy para Vercel
+# Deploy para Vercel
 
 Este projeto é um site estático com HTML, CSS e JavaScript. Ele está pronto para ser publicado no Vercel sem build.
 
