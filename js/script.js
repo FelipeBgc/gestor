@@ -104,12 +104,51 @@ const orderFormTitle = document.querySelector('#order-form h2');
 let editingOrderCode = null;
 let activeFinanceCategory = 'recebido';
 
+import { supabase } from './supabase-config.js';
+import {
+    initializeShopData,
+    getInventoryFromDB,
+    getAllProductImagesFromDB,
+    getClientsFromDB,
+    getOrdersFromDB,
+    getScheduleEventsFromDB,
+    getInvestmentsFromDB,
+    replaceInventoryForShop,
+    replaceProductImagesForShop,
+    replaceClientsForShop,
+    replaceOrdersForShop,
+    replaceScheduleEventsForShop,
+    saveInvestmentToDB
+} from './supabase-sync.js';
+import { updateShopNameInPage } from './display-shop-name.js';
+
+// atomic operations
+import {
+    addInventoryLotToDB,
+    deleteInventoryLotFromDB,
+    saveProductImageToDB,
+    deleteProductImageFromDB,
+    saveClientToDB,
+    saveOrderToDB,
+    saveScheduleEventToDB,
+    updateInventoryLotInDB,
+    updateOrderInDB,
+    deleteOrderFromDB,
+    updateClientInDB,
+    deleteClientFromDB,
+    updateScheduleEventInDB,
+    deleteScheduleEventFromDB
+} from './supabase-sync.js';
+
+const currentPage = window.location.pathname.split('/').pop();
+let currentUserEmail = '';
+
 const authKey = 'gestorLoggedIn';
 const currentUserKey = 'gestorCurrentUser';
 const currentShopKey = 'gestorCurrentShop';
 
 function getCurrentUser() {
-    return localStorage.getItem(currentUserKey) || '';
+    return currentUserEmail || localStorage.getItem(currentUserKey) || '';
 }
 
 // Image input handling (pré-visualização e leitura como base64)
@@ -159,37 +198,54 @@ const loginPage = 'login.html';
 function setupLogoutButtons() {
     const logoutButtons = document.querySelectorAll('.logout-button');
     logoutButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            localStorage.removeItem(authKey);
-            localStorage.removeItem(currentUserKey);
-            localStorage.removeItem(currentShopKey);
+        button.addEventListener('click', async () => {
+            try {
+                const { error } = await supabase.auth.signOut();
+                if (error) {
+                    console.error('Erro no signOut:', error);
+                    alert('Erro ao sair. Tente novamente.');
+                    return;
+                }
+                // double-check session cleared
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    console.warn('Session ainda presente após signOut:', session);
+                }
+            } catch (e) {
+                console.error('Erro no signOut:', e);
+                alert('Erro ao sair. Tente novamente.');
+            }
             window.location.replace(loginPage);
         });
     });
 }
 
-function displayLoggedUser() {
-    const userName = localStorage.getItem(currentUserKey);
-    const shopName = localStorage.getItem(currentShopKey);
+async function displayLoggedUser() {
     const loggedUserElements = document.querySelectorAll('#logged-user-name');
     const shopNameElements = document.querySelectorAll('#shop-name');
 
-    loggedUserElements.forEach(el => {
-        if (userName) {
-            el.textContent = userName;
-        }
-    });
+    try {
+        const shop = await initializeShopData();
+        const userResp = await supabase.auth.getUser();
+        const user = userResp?.data?.user;
 
-    shopNameElements.forEach(el => {
-        if (shopName) {
-            el.textContent = shopName;
-        }
-    });
+        const userName = user?.email || '';
+        const shopName = shop?.shop_name || '';
+        currentUserEmail = userName;
+
+        loggedUserElements.forEach(el => { if (userName) el.textContent = userName; });
+        shopNameElements.forEach(el => { if (shopName) el.textContent = shopName; });
+        // atualizar badge fixo do nome da loja
+        if (shopName) updateShopNameInPage(shopName);
+    } catch (err) {
+        console.error('Erro ao carregar usuário/loja para cabeçalho:', err);
+    }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
     setupLogoutButtons();
-    displayLoggedUser();
+    await displayLoggedUser();
+    await loadAllData();
     migrateLotImagesToProductImages();
     initializeInvestment();
     if (currentPage === 'cadastrar.html') {
@@ -217,27 +273,33 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 function getInventoryData() {
-    try {
-        return JSON.parse(localStorage.getItem(getUserStorageKey(inventoryKey)) || '[]');
-    } catch {
-        return [];
-    }
+    return inventoryCache.slice();
 }
 
 function setInventoryData(data) {
-    localStorage.setItem(getUserStorageKey(inventoryKey), JSON.stringify(data));
+    inventoryCache = Array.isArray(data) ? data.slice() : [];
+    (async () => {
+        try {
+            await replaceInventoryForShop(inventoryCache);
+        } catch (err) {
+            console.error('Erro ao persistir estoque no Supabase:', err);
+        }
+    })();
 }
 
 function getProductImagesData() {
-    try {
-        return JSON.parse(localStorage.getItem(getUserStorageKey(productImagesKey)) || '{}');
-    } catch {
-        return {};
-    }
+    return { ...productImagesCache };
 }
 
 function setProductImagesData(data) {
-    localStorage.setItem(getUserStorageKey(productImagesKey), JSON.stringify(data));
+    productImagesCache = Object.assign({}, data || {});
+    (async () => {
+        try {
+            await replaceProductImagesForShop(productImagesCache);
+        } catch (err) {
+            console.error('Erro ao persistir imagens no Supabase:', err);
+        }
+    })();
 }
 
 function getProductImageKey(product, size) {
@@ -246,16 +308,20 @@ function getProductImageKey(product, size) {
 
 function saveProductImage(product, size, imageData) {
     if (!imageData) return;
-    const images = getProductImagesData();
     const key = getProductImageKey(product, size);
-    images[key] = imageData;
-    setProductImagesData(images);
+    productImagesCache[key] = imageData;
+    (async () => {
+        try {
+            await saveProductImageToDB({ product_name: product, size, image_data: imageData });
+        } catch (err) {
+            console.error('Erro ao salvar imagem no Supabase:', err);
+        }
+    })();
 }
 
 function getProductImage(product, size) {
-    const images = getProductImagesData();
     const key = getProductImageKey(product, size);
-    return images[key] || null;
+    return productImagesCache[key] || null;
 }
 
 function migrateLotImagesToProductImages() {
@@ -280,13 +346,18 @@ function migrateLotImagesToProductImages() {
 }
 
 function getInvestmentData() {
-    const value = localStorage.getItem(getUserStorageKey(investmentKey));
-    const amount = parseFloat(value);
-    return Number.isFinite(amount) ? amount : 0;
+    return Number.isFinite(investmentsCache) ? investmentsCache : 0;
 }
 
 function setInvestmentData(value) {
-    localStorage.setItem(getUserStorageKey(investmentKey), Number(value || 0).toFixed(2));
+    investmentsCache = Number(value || 0);
+    (async () => {
+        try {
+            await saveInvestmentToDB({ amount: investmentsCache, date: new Date().toISOString() });
+        } catch (err) {
+            console.error('Erro ao salvar investimento no Supabase:', err);
+        }
+    })();
 }
 
 function addInvestment(amount) {
@@ -295,7 +366,7 @@ function addInvestment(amount) {
 }
 
 function initializeInvestment() {
-    if (localStorage.getItem(getUserStorageKey(investmentKey)) !== null) return;
+    if (Number.isFinite(investmentsCache) && investmentsCache > 0) return;
     const inventoryData = getInventoryData();
     const initialInvestment = inventoryData.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
     setInvestmentData(initialInvestment);
@@ -583,15 +654,31 @@ function showBatchListPage(product, size, options = {}) {
                 delBtn.addEventListener('click', () => {
                     const confirmed = confirm(`Deseja excluir o Lote ${idx + 1} (Qtd ${batch.quantity})?`);
                     if (!confirmed) return;
-                    const inv = getInventoryData();
-                    // Encontrar índice real no inventário via batch.batchIndex
-                    const realIndex = batch.batchIndex;
-                    if (realIndex == null) return;
-                    inv.splice(realIndex, 1);
-                    setInventoryData(inv);
-                    renderInventory(inventorySearch ? inventorySearch.value : '');
-                    renderFinance();
-                    renderList();
+                    (async () => {
+                        try {
+                            const inv = getInventoryData();
+                            const realIndex = batch.batchIndex;
+                            if (realIndex == null) return;
+                            const item = inv[realIndex];
+                            if (item && item.id) {
+                                const ok = await deleteInventoryLotFromDB(item.id);
+                                if (!ok) throw new Error('Erro ao deletar lote no Supabase');
+                                // remover do cache
+                                inventoryCache.splice(realIndex, 1);
+                            } else {
+                                // fallback local
+                                inv.splice(realIndex, 1);
+                                inventoryCache = inv.slice();
+                                await replaceInventoryForShop(inventoryCache);
+                            }
+                            renderInventory(inventorySearch ? inventorySearch.value : '');
+                            renderFinance();
+                            renderList();
+                        } catch (err) {
+                            console.error('Erro ao excluir lote:', err);
+                            alert('Erro ao excluir lote. Veja o console.');
+                        }
+                    })();
                 });
                 itemEl.appendChild(delBtn);
             }
@@ -651,17 +738,89 @@ function deleteInventoryItem(index) {
     const confirmed = confirm(`Tem certeza que deseja excluir ${itemLabel} do estoque?`);
     if (!confirmed) return;
 
-    inventoryData.splice(index, 1);
-    setInventoryData(inventoryData);
-    renderInventory(inventorySearch ? inventorySearch.value : '');
-    populateProductOptions();
-    renderFinance();
-    alert('✅ Produto excluído do estoque.');
+    (async () => {
+        try {
+            if (item && item.id) {
+                const ok = await deleteInventoryLotFromDB(item.id);
+                if (!ok) throw new Error('Erro ao deletar lote no Supabase');
+                inventoryCache.splice(index, 1);
+            } else {
+                inventoryData.splice(index, 1);
+                inventoryCache = inventoryData.slice();
+                await replaceInventoryForShop(inventoryCache);
+            }
+            renderInventory(inventorySearch ? inventorySearch.value : '');
+            populateProductOptions();
+            renderFinance();
+            alert('✅ Produto excluído do estoque.');
+        } catch (err) {
+            console.error('Erro ao excluir item:', err);
+            alert('Erro ao excluir item. Veja o console.');
+        }
+    })();
 }
 
 // Product Mode Management
 let currentProductMode = null; // 'new' or 'existing', null until user selects
 let selectedExistingProductIndex = null;
+
+// In-memory caches to keep existing synchronous flows working
+let inventoryCache = [];
+let productImagesCache = {};
+let clientsCache = [];
+let ordersCache = [];
+let agendaCache = [];
+let investmentsCache = 0;
+
+async function loadAllData() {
+    try {
+        await initializeShopData();
+
+        const [inv, images, clients, orders, schedule, investments] = await Promise.all([
+            getInventoryFromDB(),
+            getAllProductImagesFromDB(),
+            getClientsFromDB(),
+            getOrdersFromDB(),
+            getScheduleEventsFromDB(),
+            getInvestmentsFromDB()
+        ]);
+
+        inventoryCache = (inv || []).map(item => ({
+            id: item.id,
+            product: item.product_name,
+            details: item.details,
+            purchaseLocation: item.purchase_location,
+            size: item.size,
+            unitPrice: item.unit_price,
+            quantity: item.quantity,
+            total: item.total_value,
+            costPrice: item.cost_price,
+            profitMargin: item.profit_margin,
+            sellingPrice: item.selling_price
+        }));
+
+        productImagesCache = {};
+        (images || []).forEach(img => {
+            const key = `${(img.product_name||'').trim().toLowerCase()}||${(img.size||'').trim().toLowerCase()}`;
+            productImagesCache[key] = img.image_data;
+        });
+
+        clientsCache = clients || [];
+        ordersCache = orders || [];
+        agendaCache = schedule || [];
+        investmentsCache = (investments || []).reduce((s, it) => s + (parseFloat(it.amount) || 0), 0);
+
+        // Re-render dependent views
+        renderInventory(inventorySearch ? inventorySearch.value : '');
+        populateProductOptions();
+        renderClients();
+        renderOrders();
+        renderAgenda();
+        renderFinance();
+    } catch (err) {
+        console.error('Erro ao carregar dados iniciais:', err);
+    }
+}
 
 function initializeProductMode() {
     currentProductMode = null;
@@ -888,20 +1047,57 @@ function addNewProduct() {
         profitMargin: parseFloat(profitMarginInput.value) || 0,
         sellingPrice: sellingPrice || 0
     });
-
-    // Salvar foto no storage separado (não no lote)
-    if (currentProductImageData) {
-        saveProductImage(product, size, currentProductImageData);
-    }
-
-    addInvestment(total);
-    setInventoryData(inventoryData);
-    renderInventory(inventorySearch ? inventorySearch.value : '');
-    populateProductOptions();
-    resetForm();
-    initializeProductMode();
-    renderFinance();
-    alert('✅ Produto adicionado ao estoque com sucesso!');
+    // Persistar lote individualmente no Supabase
+    (async () => {
+        try {
+            const lot = {
+                product_name: product,
+                details,
+                purchase_location: purchaseLocation,
+                size,
+                unit_price: parseFloat(unitPriceInput.value) || null,
+                quantity,
+                total_value: total,
+                cost_price: parseFloat(costPriceInput.value) || null,
+                profit_margin: parseFloat(profitMarginInput.value) || null,
+                selling_price: sellingPrice || null
+            };
+            const created = await addInventoryLotToDB(lot);
+            if (created) {
+                // Atualizar cache local
+                inventoryCache.unshift({
+                    id: created.id,
+                    product: created.product_name,
+                    details: created.details,
+                    purchaseLocation: created.purchase_location,
+                    size: created.size,
+                    unitPrice: created.unit_price,
+                    quantity: created.quantity,
+                    total: created.total_value,
+                    costPrice: created.cost_price,
+                    profitMargin: created.profit_margin,
+                    sellingPrice: created.selling_price
+                });
+                if (currentProductImageData) {
+                    await saveProductImageToDB({ product_name: product, size, image_data: currentProductImageData });
+                    const key = getProductImageKey(product, size);
+                    productImagesCache[key] = currentProductImageData;
+                }
+                addInvestment(total);
+                renderInventory(inventorySearch ? inventorySearch.value : '');
+                populateProductOptions();
+                resetForm();
+                initializeProductMode();
+                renderFinance();
+                alert('✅ Produto adicionado ao estoque com sucesso!');
+            } else {
+                alert('Erro ao salvar produto. Tente novamente.');
+            }
+        } catch (err) {
+            console.error('Erro ao adicionar produto:', err);
+            alert('Erro ao adicionar produto. Veja o console.');
+        }
+    })();
 }
 
 function addUnitsToExistingProduct() {
@@ -951,15 +1147,50 @@ function addUnitsToExistingProduct() {
         profitMargin: existingProfitMargin,
         sellingPrice: updatedSellingPrice
     });
-
-    addInvestment(addedTotal);
-
-    setInventoryData(inventoryData);
-    renderInventory(inventorySearch ? inventorySearch.value : '');
-    populateProductOptions();
-    initializeProductMode();
-    renderFinance();
-    alert(`${quantity} unidade(s) adicionada(s) ao estoque.`);
+    // Persistir lote criado para produto existente
+    (async () => {
+        try {
+            const lot = {
+                product_name: selectedGroup.product,
+                details: selectedGroup.details,
+                purchase_location: purchaseLocation,
+                size: selectedGroup.size,
+                unit_price: existingCost,
+                quantity,
+                total_value: addedTotal,
+                cost_price: existingCost,
+                profit_margin: existingProfitMargin,
+                selling_price: updatedSellingPrice
+            };
+            const created = await addInventoryLotToDB(lot);
+            if (created) {
+                inventoryCache.unshift({
+                    id: created.id,
+                    product: created.product_name,
+                    details: created.details,
+                    purchaseLocation: created.purchase_location,
+                    size: created.size,
+                    unitPrice: created.unit_price,
+                    quantity: created.quantity,
+                    total: created.total_value,
+                    costPrice: created.cost_price,
+                    profitMargin: created.profit_margin,
+                    sellingPrice: created.selling_price
+                });
+                addInvestment(addedTotal);
+                renderInventory(inventorySearch ? inventorySearch.value : '');
+                populateProductOptions();
+                initializeProductMode();
+                renderFinance();
+                alert(`${quantity} unidade(s) adicionada(s) ao estoque.`);
+            } else {
+                alert('Erro ao salvar lote. Tente novamente.');
+            }
+        } catch (err) {
+            console.error('Erro ao adicionar lote:', err);
+            alert('Erro ao adicionar unidade(s). Veja o console.');
+        }
+    })();
 }
 
 if (addStockBtn) {
@@ -1010,15 +1241,18 @@ if (inventorySearch) {
 
 // Clients storage and UI
 function getClientsData() {
-    try {
-        return JSON.parse(localStorage.getItem(getUserStorageKey(clientsKey)) || '[]');
-    } catch {
-        return [];
-    }
+    return clientsCache.slice();
 }
 
 function setClientsData(data) {
-    localStorage.setItem(getUserStorageKey(clientsKey), JSON.stringify(data));
+    clientsCache = Array.isArray(data) ? data.slice() : [];
+    (async () => {
+        try {
+            await replaceClientsForShop(clientsCache);
+        } catch (err) {
+            console.error('Erro ao persistir clientes no Supabase:', err);
+        }
+    })();
 }
 
 function renderClients(filter = '') {
@@ -1106,31 +1340,43 @@ function addClient() {
     const birthday = clientBirthdayInput ? clientBirthdayInput.value : '';
     const notes = clientNotesInput ? clientNotesInput.value.trim() : '';
 
-    const clients = getClientsData();
-    clients.push({ name, source, type, cpf, cnpj, razao, phone, address, birthday, notes, created: new Date().toISOString() });
-    setClientsData(clients);
-    renderClients(clientsSearch ? clientsSearch.value : '');
-    populateClientOptions();
-    resetClientForm();
-    if (clientFormEl) clientFormEl.classList.add('hidden-field');
-    alert('Cliente salvo.');
+    (async () => {
+        try {
+            const created = await saveClientToDB({ name, source, client_type: type, cpf, cnpj, razao_social: razao, phone, address, birthday, notes });
+            if (created) {
+                clientsCache.unshift(created);
+                renderClients(clientsSearch ? clientsSearch.value : '');
+                populateClientOptions();
+                resetClientForm();
+                if (clientFormEl) clientFormEl.classList.add('hidden-field');
+                alert('Cliente salvo.');
+            } else {
+                alert('Erro ao salvar cliente.');
+            }
+        } catch (err) {
+            console.error('Erro ao salvar cliente:', err);
+            alert('Erro ao salvar cliente. Veja o console.');
+        }
+    })();
 }
 
 function getOrdersData() {
     try {
-        const data = JSON.parse(localStorage.getItem(getUserStorageKey(ordersKey)) || '[]');
-        if (!Array.isArray(data)) return [];
-        return data.map(order => ({
-            ...order,
-            paid: order.paid === true || order.paid === 'true',
-        }));
+        return ordersCache.map(order => ({ ...order, paid: order.is_paid === true || order.isPaid === true }));
     } catch {
         return [];
     }
 }
 
 function setOrdersData(data) {
-    localStorage.setItem(getUserStorageKey(ordersKey), JSON.stringify(data));
+    ordersCache = Array.isArray(data) ? data.slice() : [];
+    (async () => {
+        try {
+            await replaceOrdersForShop(ordersCache);
+        } catch (err) {
+            console.error('Erro ao persistir pedidos no Supabase:', err);
+        }
+    })();
 }
 
 function generateOrderCode() {
@@ -1348,15 +1594,18 @@ let agendaCurrentYear = new Date().getFullYear();
 let selectedAgendaDate = new Date();
 
 function getAgendaData() {
-    try {
-        return JSON.parse(localStorage.getItem(getUserStorageKey(agendaKey)) || '[]');
-    } catch {
-        return [];
-    }
+    return agendaCache.slice();
 }
 
 function setAgendaData(data) {
-    localStorage.setItem(getUserStorageKey(agendaKey), JSON.stringify(data));
+    agendaCache = Array.isArray(data) ? data.slice() : [];
+    (async () => {
+        try {
+            await replaceScheduleEventsForShop(agendaCache);
+        } catch (err) {
+            console.error('Erro ao persistir agenda no Supabase:', err);
+        }
+    })();
 }
 
 function getAgendaKey(date) {
@@ -1694,7 +1943,7 @@ function resetOrderForm() {
     toggleOrderPayment();
 }
 
-function saveOrder() {
+async function saveOrder() {
     if (!orderCodeInput) return;
     const code = orderCodeInput.value || generateOrderCode();
     const date = (orderDateInput?.value && orderDateInput.value.trim()) || new Date().toLocaleDateString('pt-BR');
@@ -1704,6 +1953,7 @@ function saveOrder() {
         return;
     }
     let clientName = '';
+    let clientRecord = null;
     if (selectedClient === '_new') {
         const newName = (orderClientNameNew?.value || '').trim();
         if (!newName) {
@@ -1713,14 +1963,22 @@ function saveOrder() {
             return;
         }
         clientName = newName;
-        // salvar novo cliente nos cadastros
-        const clients = getClientsData();
-        clients.push({ name: newName, source: '', type: 'pf', cpf: '', cnpj: '', razao: '', phone: '', address: '', birthday: '', notes: '', created: new Date().toISOString() });
-        setClientsData(clients);
-        renderClients(clientsSearch ? clientsSearch.value : '');
-        populateClientOptions();
+        try {
+            clientRecord = await saveClientToDB({ name: newName, source: '', client_type: 'pf', cpf: '', cnpj: '', razao_social: '', phone: '', address: '', birthday: '', notes: '' });
+            if (clientRecord) {
+                clientsCache.unshift(clientRecord);
+                renderClients(clientsSearch ? clientsSearch.value : '');
+                populateClientOptions();
+            }
+        } catch (err) {
+            console.error('Erro ao criar cliente:', err);
+            alert('Erro ao criar cliente. Veja o console.');
+            return;
+        }
     } else {
         clientName = selectedClient || 'Cliente não informado';
+        // try find client record in cache by name
+        clientRecord = clientsCache.find(c => c.name === clientName) || null;
     }
 
     const productSelectValue = orderProductSelect?.value || '';
@@ -1802,55 +2060,91 @@ function saveOrder() {
     }
 
     if (!editingOrderCode) {
-        const unitCost = selectedBatch.costPrice ? parseFloat(selectedBatch.costPrice) : (stockQuantity > 0 ? (parseFloat(selectedBatch.total) || 0) / stockQuantity : 0);
-        const remainingCost = Math.max(0, (parseFloat(selectedBatch.total) || 0) - unitCost * quantity);
-        inventoryData[selectedBatchInventoryIndex].quantity = stockQuantity - quantity;
-        inventoryData[selectedBatchInventoryIndex].total = remainingCost;
-        if (inventoryData[selectedBatchInventoryIndex].quantity <= 0) {
-            inventoryData.splice(selectedBatchInventoryIndex, 1);
+        try {
+            const batchItem = selectedBatch;
+            const unitCost = batchItem && batchItem.costPrice ? parseFloat(batchItem.costPrice) : (stockQuantity > 0 ? (parseFloat(batchItem.total) || 0) / stockQuantity : 0);
+            const remainingCost = Math.max(0, (parseFloat(batchItem.total) || 0) - unitCost * quantity);
+            const newQty = stockQuantity - quantity;
+            if (batchItem && batchItem.id) {
+                if (newQty <= 0) {
+                    const ok = await deleteInventoryLotFromDB(batchItem.id);
+                    if (!ok) throw new Error('Erro ao deletar lote após venda');
+                    // remove from cache
+                    const idx = inventoryCache.findIndex(i => i.id === batchItem.id);
+                    if (idx >= 0) inventoryCache.splice(idx, 1);
+                } else {
+                    const updated = await updateInventoryLotInDB(batchItem.id, { quantity: newQty, total: remainingCost });
+                    if (!updated) throw new Error('Erro ao atualizar lote');
+                    const idx = inventoryCache.findIndex(i => i.id === batchItem.id);
+                    if (idx >= 0) inventoryCache[idx] = { ...inventoryCache[idx], quantity: newQty, total: remainingCost };
+                }
+            } else {
+                // fallback local replace
+                const inventoryData = getInventoryData();
+                inventoryData[selectedBatchInventoryIndex].quantity = newQty;
+                inventoryData[selectedBatchInventoryIndex].total = remainingCost;
+                if (inventoryData[selectedBatchInventoryIndex].quantity <= 0) inventoryData.splice(selectedBatchInventoryIndex, 1);
+                inventoryCache = inventoryData.slice();
+                await replaceInventoryForShop(inventoryCache);
+            }
+            renderInventory(inventorySearch ? inventorySearch.value : '');
+            populateProductOptions();
+        } catch (err) {
+            console.error('Erro ao atualizar estoque para pedido:', err);
+            alert('Erro ao atualizar estoque. Veja o console.');
+            return;
         }
-        setInventoryData(inventoryData);
-        renderInventory(inventorySearch ? inventorySearch.value : '');
-        populateProductOptions();
     }
 
     const orders = getOrdersData();
-    const orderObject = {
+    const orderPayload = {
         code,
-        date,
-        clientName,
-        productName,
-        productSize,
-        batchInventoryIndex,
+        date: (parseOrderDate(date) && parseOrderDate(date).toISOString()) || new Date().toISOString(),
+        client_name: clientName,
+        client_id: clientRecord ? clientRecord.id : null,
+        product_name: productName,
+        product_size: productSize,
+        batch_inventory_index: batchInventoryIndex,
+        batch_id: selectedBatch && selectedBatch.id ? selectedBatch.id : null,
         quantity,
         discount,
         freight,
         fees,
-        total,
-        paymentCondition,
-        signalAmount,
-        signalDate,
-        installmentsQty,
-        installmentValue,
+        total_value: total,
+        payment_condition: paymentCondition,
+        signal_amount: signalAmount,
+        signal_date: signalDate || null,
+        installments_qty: installmentsQty,
+        installment_value: installmentValue,
         notes,
         paid
     };
 
-    if (editingOrderCode) {
-        const index = orders.findIndex(o => o.code === editingOrderCode);
-        if (index >= 0) {
-            orders[index] = { ...orderObject, created: orders[index].created };
+    try {
+        let saved = null;
+        if (editingOrderCode) {
+            const existingOrder = ordersCache.find(o => o.code === editingOrderCode);
+            const orderId = existingOrder ? existingOrder.id : null;
+            if (!orderId) throw new Error('ID do pedido não encontrado para atualização');
+            saved = await updateOrderInDB(orderId, orderPayload);
         } else {
-            orders.push({ ...orderObject, created: new Date().toISOString() });
+            saved = await saveOrderToDB(orderPayload);
         }
-    } else {
-        orders.push({ ...orderObject, created: new Date().toISOString() });
+        if (saved) {
+            // update local cache
+            const idx = ordersCache.findIndex(o => o.code === saved.code);
+            if (idx >= 0) ordersCache[idx] = saved; else ordersCache.unshift(saved);
+            renderOrders(ordersSearch ? ordersSearch.value : '');
+            resetOrderForm();
+            if (orderFormEl) orderFormEl.classList.add('hidden-field');
+            alert(editingOrderCode ? 'Pedido atualizado.' : 'Pedido salvo.');
+        } else {
+            throw new Error('Resposta vazia ao salvar pedido');
+        }
+    } catch (err) {
+        console.error('Erro ao salvar pedido:', err);
+        alert('Erro ao salvar pedido. Veja o console.');
     }
-    setOrdersData(orders);
-    renderOrders(ordersSearch ? ordersSearch.value : '');
-    resetOrderForm();
-    if (orderFormEl) orderFormEl.classList.add('hidden-field');
-    alert(editingOrderCode ? 'Pedido atualizado.' : 'Pedido salvo.');
 }
 
 function renderOrders(filter = '') {
@@ -1993,12 +2287,26 @@ function editOrder(code) {
     }
 }
 
-function deleteOrder(code) {
+async function deleteOrder(code) {
     if (!confirm('Deseja realmente excluir este pedido?')) return;
-    const orders = getOrdersData();
-    const filtered = orders.filter(o => o.code !== code);
-    setOrdersData(filtered);
-    renderOrders(ordersSearch ? ordersSearch.value : '');
+    try {
+        const orders = getOrdersData();
+        const target = orders.find(o => o.code === code);
+        if (target && target.id) {
+            const ok = await deleteOrderFromDB(target.id);
+            if (!ok) throw new Error('Erro ao deletar pedido no Supabase');
+            const idx = ordersCache.findIndex(o => o.id === target.id);
+            if (idx >= 0) ordersCache.splice(idx, 1);
+        } else {
+            const filtered = orders.filter(o => o.code !== code);
+            ordersCache = filtered.slice();
+            await replaceOrdersForShop(ordersCache);
+        }
+        renderOrders(ordersSearch ? ordersSearch.value : '');
+    } catch (err) {
+        console.error('Erro ao deletar pedido:', err);
+        alert('Erro ao excluir pedido. Veja o console.');
+    }
 }
 
 if (orderList) {

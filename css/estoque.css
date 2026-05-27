@@ -1209,7 +1209,7 @@ button:hover {
     transform: translateY(-1px);
 }
 
-.logged-user {
+#shop-name {
     position: absolute;
     top: 30px;
     right: 138px;
@@ -1219,11 +1219,11 @@ button:hover {
     color: #334155;
     font-size: 0.95rem;
     font-weight: 700;
-    z-index: 1100   ;
+    z-index: 1100;
     max-width: calc(100% - 220px);
     text-align: right;
 }
-.logged-user strong {
+#shop-name {
     color: #111827;
 }
 

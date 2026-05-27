@@ -39,10 +39,6 @@ if (logoutBtn) {
     logoutBtn.addEventListener('click', async () => {
         try {
             await supabase.auth.signOut();
-            // Limpar localStorage
-            localStorage.removeItem('gestorCurrentUser');
-            localStorage.removeItem('gestorCurrentShop');
-            localStorage.removeItem('gestorCurrentShopId');
             window.location.replace('login.html');
         } catch (error) {
             console.error('Erro ao fazer logout:', error);

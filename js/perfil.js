@@ -1,8 +1,6 @@
-import "./script.js";
-
-const usersKey = 'gestorUsers';
-const currentUserKey = 'gestorCurrentUser';
-const currentShopKey = 'gestorCurrentShop';
+import { supabase } from './supabase-config.js';
+import { initializeShopData } from './supabase-sync.js';
+import { updateShopNameInPage } from './display-shop-name.js';
 
 const profileForm = document.getElementById('profile-form');
 const usernameInput = document.getElementById('profile-username');
@@ -11,89 +9,61 @@ const emailInput = document.getElementById('profile-email');
 const phoneInput = document.getElementById('profile-phone');
 const profileMessage = document.getElementById('profile-message');
 
-function getUsers() {
-    try {
-        return JSON.parse(localStorage.getItem(usersKey) || '[]');
-    } catch {
-        return [];
-    }
-}
-
-function saveUsers(users) {
-    localStorage.setItem(usersKey, JSON.stringify(users));
-}
-
-function getCurrentUser() {
-    return localStorage.getItem(currentUserKey);
-}
-
-function loadProfile() {
-    const currentUser = getCurrentUser();
-    if (!currentUser) {
-        return;
-    }
-
-    const users = getUsers();
-    const user = users.find(u => u.username.toLowerCase() === currentUser.toLowerCase());
-    if (!user) {
-        return;
-    }
-
-    usernameInput.value = user.username || '';
-    shopNameInput.value = user.shopName || '';
-    emailInput.value = user.email || '';
-    phoneInput.value = user.phone || '';
-}
-
 function showMessage(message, isError = false) {
     if (!profileMessage) return;
     profileMessage.textContent = message;
     profileMessage.className = `message ${isError ? 'error' : 'success'}`;
 }
 
-profileForm?.addEventListener('submit', event => {
+async function loadProfile() {
+    try {
+        const userResp = await supabase.auth.getUser();
+        const user = userResp?.data?.user;
+        const shop = await initializeShopData();
+
+        if (usernameInput) usernameInput.value = user?.user_metadata?.username || (user?.email || '').split('@')[0];
+        if (shopNameInput) shopNameInput.value = shop?.shop_name || '';
+        if (emailInput) emailInput.value = user?.email || '';
+        if (phoneInput) phoneInput.value = user?.user_metadata?.phone || '';
+    } catch (err) {
+        console.error('Erro ao carregar perfil:', err);
+    }
+}
+
+profileForm?.addEventListener('submit', async event => {
     event.preventDefault();
-    const currentUser = getCurrentUser();
-    if (!currentUser) {
-        showMessage('Erro ao carregar o perfil.', true);
-        return;
+    try {
+        const newUsername = usernameInput.value.trim();
+        const shopName = shopNameInput.value.trim();
+        const email = emailInput.value.trim();
+        const phone = phoneInput.value.trim();
+
+        if (!newUsername || !shopName) {
+            showMessage('Preencha o nome do usuário e o nome da loja.', true);
+            return;
+        }
+
+        // Atualizar nome da loja
+        const shop = await initializeShopData();
+        if (shop) {
+            const { error: shopError } = await supabase
+                .from('shops')
+                .update({ shop_name: shopName })
+                .eq('id', shop.id);
+            if (shopError) throw shopError;
+        }
+
+        // Atualizar metadata do usuário (username e phone)
+        const { data: userData, error: userError } = await supabase.auth.updateUser({ data: { username: newUsername, phone } });
+        if (userError) throw userError;
+
+        showMessage('Perfil salvo com sucesso.');
+        // atualizar badge/nome na UI imediatamente
+        updateShopNameInPage(shopName);
+    } catch (err) {
+        console.error('Erro ao salvar perfil:', err);
+        showMessage('Erro ao salvar perfil.', true);
     }
-
-    const newUsername = usernameInput.value.trim();
-    const shopName = shopNameInput.value.trim();
-    const email = emailInput.value.trim();
-    const phone = phoneInput.value.trim();
-
-    if (!newUsername || !shopName) {
-        showMessage('Preencha o nome do usuário e o nome da loja.', true);
-        return;
-    }
-
-    const users = getUsers();
-    const currentUserIndex = users.findIndex(u => u.username.toLowerCase() === currentUser.toLowerCase());
-    if (currentUserIndex === -1) {
-        showMessage('Usuário não encontrado.', true);
-        return;
-    }
-
-    const usernameConflict = users.some((u, index) => index !== currentUserIndex && u.username.toLowerCase() === newUsername.toLowerCase());
-    if (usernameConflict) {
-        showMessage('Este nome de usuário já está em uso.', true);
-        return;
-    }
-
-    const user = users[currentUserIndex];
-    user.username = newUsername;
-    user.shopName = shopName;
-    user.email = email;
-    user.phone = phone;
-
-    saveUsers(users);
-    localStorage.setItem(currentUserKey, newUsername);
-    localStorage.setItem(currentShopKey, shopName);
-    showMessage('Perfil salvo com sucesso.');
-    passwordInput.value = '';
-    confirmPasswordInput.value = '';
 });
 
 window.addEventListener('DOMContentLoaded', loadProfile);

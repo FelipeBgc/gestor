@@ -1321,7 +1321,7 @@ dialog.select-product-dialog::backdrop {
     transform: translateY(-1px);
 }
 
-.logged-user {
+#shop-name {
     position: absolute;
     top: 30px;
     right: 138px;
@@ -1335,7 +1335,7 @@ dialog.select-product-dialog::backdrop {
     max-width: calc(100% - 220px);
     text-align: right;
 }
-.logged-user strong {
+#shop-name {
     color: #111827;
 }
 
