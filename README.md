@@ -1,27 +1,37 @@
-# Deploy para Netlify
+﻿# Deploy para Vercel
 
-Este projeto é um site estático com HTML, CSS e JavaScript. Ele pode ser publicado diretamente no Netlify usando a pasta do projeto como diretório de publicação.
+Este projeto é um site estático com HTML, CSS e JavaScript. Ele está pronto para ser publicado no Vercel sem build.
 
-## Passo a passo
+## Como funciona
 
-1. Acesse https://app.netlify.com/ e crie uma conta ou faça login.
-2. Crie um novo site.
-3. Selecione "Deploy manually" ou conecte ao seu repositório Git.
+- A raiz do site (`/`) redireciona automaticamente para `login.html`.
+- O arquivo `index.html` contém o redirecionamento padrão.
+- O arquivo `vercel.json` garante que a rota raiz sirva `login.html` em Vercel.
 
-### Deploy manual (drag and drop)
-- Comprima a pasta `gestor` ou use o recurso de arrastar e soltar do Netlify.
-- O diretório de publicação é a raiz do projeto.
+## Deploy rápido
 
-### Deploy via Git
-- Garanta que o repositório Git esteja no diretório `gestor`.
-- Conecte o repositório no Netlify.
-- Configure:
-  - Build command: deixe vazio
-  - Publish directory: `.`
+1. Instale o Vercel CLI (opcional):
 
-## Configuração Netlify
-- O arquivo `netlify.toml` já está criado na raiz.
-- Ele publica o site a partir da raiz do projeto e redireciona a página inicial para `login.html`.
+```bash
+npm i -g vercel
+```
 
-## Observação
-- Se quiser usar outra página inicial, edite o redirecionamento em `netlify.toml`.
+2. No diretório do projeto, execute:
+
+```bash
+vercel login
+vercel --prod
+```
+
+3. Alternativamente, conecte o repositório no dashboard do Vercel e publique como site estático.
+
+## O que verificar
+
+- `index.html` redireciona para `login.html`.
+- `vercel.json` define a rota `/` para `login.html`.
+- Não há comando de build.
+- A pasta `css/`, `js/` e os arquivos HTML estão na raiz do projeto.
+
+## Documentação adicional
+
+- `README-VERCEL.md` contém instruções de deploy detalhadas para Vercel.
