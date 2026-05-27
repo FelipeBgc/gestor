@@ -200,8 +200,8 @@ function displayLoggedUser() {
 window.addEventListener('DOMContentLoaded', () => {
     setupLogoutButtons();
     displayLoggedUser();
+    migrateLotImagesToProductImages();
     initializeInvestment();
-    migrateProductImages(); // Migrar imagens antigas para novo storage
     if (currentPage === 'cadastrar.html') {
         initializeProductMode();
     }
@@ -268,6 +268,27 @@ function getProductImage(product, size) {
     return images[key] || null;
 }
 
+function migrateLotImagesToProductImages() {
+    const inventoryData = getInventoryData();
+    const images = getProductImagesData();
+    let updated = false;
+
+    inventoryData.forEach(item => {
+        const imageData = item.image;
+        if (!imageData) return;
+        const key = getProductImageKey(item.product, item.size);
+        if (!images[key]) {
+            images[key] = imageData;
+            updated = true;
+        }
+    });
+
+    if (updated) {
+        setProductImagesData(images);
+        // optional: keep lot image if desired, but we no longer rely on it
+    }
+}
+
 function getInvestmentData() {
     const value = localStorage.getItem(getUserStorageKey(investmentKey));
     const amount = parseFloat(value);
@@ -288,30 +309,6 @@ function initializeInvestment() {
     const inventoryData = getInventoryData();
     const initialInvestment = inventoryData.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
     setInvestmentData(initialInvestment);
-}
-
-function migrateProductImages() {
-    // Migrar imagens armazenadas em lotes antigos para o novo storage separado
-    const inventoryData = getInventoryData();
-    const images = getProductImagesData();
-    let migrated = false;
-
-    inventoryData.forEach((item) => {
-        if (item.image) {
-            const key = getProductImageKey(item.product, item.size);
-            if (!images[key]) {
-                images[key] = item.image;
-                migrated = true;
-            }
-            // Remover imagem do lote para economizar espaço
-            delete item.image;
-        }
-    });
-
-    if (migrated) {
-        setProductImagesData(images);
-        setInventoryData(inventoryData);
-    }
 }
 
 function checkInventoryWarning() {
