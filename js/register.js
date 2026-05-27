@@ -53,7 +53,11 @@ registerForm?.addEventListener('submit', async event => {
         localStorage.setItem(currentShopKey, shopName);
         window.location.replace('gestor.html');
     } catch (error) {
-        showError('Erro ao registrar. Tente novamente.');
+        if (error?.code === '42501') {
+            showError('Erro de permissão no Supabase. Verifique as políticas de RLS da tabela gestor_users.');
+        } else {
+            showError('Erro ao registrar. Tente novamente.');
+        }
         console.error('Registration error:', error);
     }
 });

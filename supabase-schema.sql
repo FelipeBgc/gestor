@@ -15,6 +15,18 @@ create table if not exists gestor_users (
   updated_at timestamptz not null default now()
 );
 
+alter table gestor_users enable row level security;
+
+create policy "Allow anon insert on gestor_users"
+  on gestor_users
+  for insert
+  with check (auth.role() = 'anon');
+
+create policy "Allow anon select on gestor_users"
+  on gestor_users
+  for select
+  using (auth.role() = 'anon');
+
 create table if not exists gestor_inventory (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references gestor_users(id) on delete cascade,
@@ -91,6 +103,36 @@ create table if not exists gestor_agenda (
   note text,
   created_at timestamptz not null default now()
 );
+
+alter table gestor_inventory enable row level security;
+create policy "Allow anon select on gestor_inventory" on gestor_inventory for select using (auth.role() = 'anon');
+create policy "Allow anon insert on gestor_inventory" on gestor_inventory for insert with check (auth.role() = 'anon');
+create policy "Allow anon update on gestor_inventory" on gestor_inventory for update with check (auth.role() = 'anon');
+create policy "Allow anon delete on gestor_inventory" on gestor_inventory for delete using (auth.role() = 'anon');
+
+alter table gestor_clients enable row level security;
+create policy "Allow anon select on gestor_clients" on gestor_clients for select using (auth.role() = 'anon');
+create policy "Allow anon insert on gestor_clients" on gestor_clients for insert with check (auth.role() = 'anon');
+create policy "Allow anon update on gestor_clients" on gestor_clients for update with check (auth.role() = 'anon');
+create policy "Allow anon delete on gestor_clients" on gestor_clients for delete using (auth.role() = 'anon');
+
+alter table gestor_orders enable row level security;
+create policy "Allow anon select on gestor_orders" on gestor_orders for select using (auth.role() = 'anon');
+create policy "Allow anon insert on gestor_orders" on gestor_orders for insert with check (auth.role() = 'anon');
+create policy "Allow anon update on gestor_orders" on gestor_orders for update with check (auth.role() = 'anon');
+create policy "Allow anon delete on gestor_orders" on gestor_orders for delete using (auth.role() = 'anon');
+
+alter table gestor_investments enable row level security;
+create policy "Allow anon select on gestor_investments" on gestor_investments for select using (auth.role() = 'anon');
+create policy "Allow anon insert on gestor_investments" on gestor_investments for insert with check (auth.role() = 'anon');
+create policy "Allow anon update on gestor_investments" on gestor_investments for update with check (auth.role() = 'anon');
+create policy "Allow anon delete on gestor_investments" on gestor_investments for delete using (auth.role() = 'anon');
+
+alter table gestor_agenda enable row level security;
+create policy "Allow anon select on gestor_agenda" on gestor_agenda for select using (auth.role() = 'anon');
+create policy "Allow anon insert on gestor_agenda" on gestor_agenda for insert with check (auth.role() = 'anon');
+create policy "Allow anon update on gestor_agenda" on gestor_agenda for update with check (auth.role() = 'anon');
+create policy "Allow anon delete on gestor_agenda" on gestor_agenda for delete using (auth.role() = 'anon');
 
 create index if not exists idx_gestor_inventory_user on gestor_inventory(user_id);
 create index if not exists idx_gestor_clients_user on gestor_clients(user_id);
