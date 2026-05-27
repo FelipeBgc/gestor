@@ -1,9 +1,12 @@
-import { supabase } from './supabase-config.js';
+import { supabase, getShopProfile } from './supabase-config.js';
 
 const loginForm = document.getElementById('login-form');
 const usernameInput = document.getElementById('username');
 const passwordInput = document.getElementById('password');
 const loginMessage = document.getElementById('login-message');
+const authKey = 'gestorLoggedIn';
+const currentUserKey = 'gestorCurrentUser';
+const currentShopKey = 'gestorCurrentShop';
 
 // Verificar se usuário já está autenticado
 async function checkAuthStatus() {
@@ -54,7 +57,19 @@ loginForm?.addEventListener('submit', async (event) => {
                 loginMessage.style.display = 'block';
             }
         } else if (data.session) {
-            // Login bem-sucedido
+            const user = data.user ?? data.session.user;
+            if (user) {
+                localStorage.setItem(currentUserKey, user.email || email);
+                localStorage.setItem(authKey, 'true');
+                try {
+                    const { data: shop, error: shopError } = await getShopProfile(user.id);
+                    if (shop && shop.shop_name) {
+                        localStorage.setItem(currentShopKey, shop.shop_name);
+                    }
+                } catch (shopError) {
+                    console.error('Erro ao carregar dados da loja:', shopError);
+                }
+            }
             window.location.replace('gestor.html');
         }
     } catch (err) {

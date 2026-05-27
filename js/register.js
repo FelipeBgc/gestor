@@ -6,6 +6,9 @@ const shopNameInput = document.getElementById('shop-name');
 const passwordInput = document.getElementById('new-password');
 const confirmPasswordInput = document.getElementById('confirm-password');
 const registerMessage = document.getElementById('register-message');
+const authKey = 'gestorLoggedIn';
+const currentUserKey = 'gestorCurrentUser';
+const currentShopKey = 'gestorCurrentShop';
 
 // Verificar se usuário já está autenticado
 async function checkAuthStatus() {
@@ -101,7 +104,9 @@ registerForm?.addEventListener('submit', async (event) => {
         }
 
         console.log('Loja criada com sucesso:', shopData);
-
+        localStorage.setItem(currentUserKey, authData.user.email || email);
+        localStorage.setItem(currentShopKey, shopName);
+        localStorage.setItem(authKey, 'true');
         // 4. Tentar fazer login automático
         console.log('Tentando login automático...');
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
