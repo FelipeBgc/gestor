@@ -307,7 +307,10 @@ export async function replaceScheduleEventsForShop(eventsArray) {
 
 export async function addInventoryLotToDB(lot) {
     const shopId = getCurrentShopId();
-    if (!shopId) return null;
+    if (!shopId) {
+        console.error('addInventoryLotToDB: shop_id não definido. Usuário pode não estar autenticado ou loja não existe.');
+        return null;
+    }
 
     const { data, error } = await supabase
         .from('inventory_lots')

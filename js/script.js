@@ -120,6 +120,7 @@ import {
     replaceScheduleEventsForShop,
     saveInvestmentToDB
 } from './supabase-sync.js';
+import { getCurrentShopId } from './supabase-sync.js';
 import { updateShopNameInPage } from './display-shop-name.js';
 
 // atomic operations
@@ -1036,17 +1037,6 @@ function addNewProduct() {
         // Caso exista mesmo nome mas tamanhos diferentes, permite salvar (variação)
     }
 
-    inventoryData.push({
-        product,
-        details,
-        purchaseLocation,
-        size,
-        quantity,
-        total,
-        costPrice: parseFloat(costPriceInput.value) || 0,
-        profitMargin: parseFloat(profitMarginInput.value) || 0,
-        sellingPrice: sellingPrice || 0
-    });
     // Persistar lote individualmente no Supabase
     (async () => {
         try {
@@ -1062,6 +1052,10 @@ function addNewProduct() {
                 profit_margin: parseFloat(profitMarginInput.value) || null,
                 selling_price: sellingPrice || null
             };
+            if (!getCurrentShopId()) {
+                alert('❌ Faça login e configure a loja antes de salvar produtos.');
+                return;
+            }
             const created = await addInventoryLotToDB(lot);
             if (created) {
                 // Atualizar cache local
@@ -1136,17 +1130,6 @@ function addUnitsToExistingProduct() {
     const addedTotal = existingCost * quantity;
     const updatedSellingPrice = existingCost * (1 + existingProfitMargin / 100);
 
-    inventoryData.push({
-        product: selectedGroup.product,
-        details: selectedGroup.details,
-        purchaseLocation,
-        size: selectedGroup.size,
-        quantity,
-        total: addedTotal,
-        costPrice: existingCost,
-        profitMargin: existingProfitMargin,
-        sellingPrice: updatedSellingPrice
-    });
     // Persistir lote criado para produto existente
     (async () => {
         try {
@@ -1162,6 +1145,10 @@ function addUnitsToExistingProduct() {
                 profit_margin: existingProfitMargin,
                 selling_price: updatedSellingPrice
             };
+            if (!getCurrentShopId()) {
+                alert('❌ Faça login e configure a loja antes de salvar produtos.');
+                return;
+            }
             const created = await addInventoryLotToDB(lot);
             if (created) {
                 inventoryCache.unshift({
