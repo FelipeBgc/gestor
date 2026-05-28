@@ -55,6 +55,34 @@ export async function createInventoryItem(item) {
     return error;
 }
 
+export async function getInventoryItems() {
+    const user_id = await ensureUserId();
+    const { data, error } = await supabase
+        .from('gestor_inventory')
+        .select('product,details,purchase_location,size,quantity,total,cost_price,profit_margin,selling_price,image,created_at')
+        .eq('user_id', user_id)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Erro ao buscar estoque no Supabase:', error);
+        return [];
+    }
+
+    return (data || []).map(item => ({
+        product: item.product,
+        details: item.details,
+        purchaseLocation: item.purchase_location,
+        size: item.size,
+        quantity: Number(item.quantity) || 0,
+        total: Number(item.total) || 0,
+        costPrice: Number(item.cost_price) || 0,
+        profitMargin: Number(item.profit_margin) || 0,
+        sellingPrice: Number(item.selling_price) || 0,
+        image: item.image || null,
+        created: item.created_at
+    }));
+}
+
 export async function createClientRecord(client) {
     const user_id = await ensureUserId();
     const payload = {

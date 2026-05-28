@@ -1,4 +1,4 @@
-import { createInventoryItem, createClientRecord, upsertOrder, recordInvestment, createAgendaEventRow, deleteAgendaEventRow } from './supabase-data.js';
+import { createInventoryItem, createClientRecord, upsertOrder, recordInvestment, createAgendaEventRow, deleteAgendaEventRow, getInventoryItems } from './supabase-data.js';
 
 const inventoryKey = 'gestorInventory';
 const inventorySearch = document.getElementById('inventory-search');
@@ -212,9 +212,12 @@ window.addEventListener('DOMContentLoaded', () => {
     if (currentPage === 'cadastrar.html') {
         initializeProductMode();
     }
-    // Inicializa listener para abrir modal de imagem no estoque
     if (currentPage === 'estoque.html') {
-        initializeImageModalHandlers();
+        loadInventoryFromSupabase().then(() => {
+            renderInventory('');
+            checkInventoryWarning();
+            initializeImageModalHandlers();
+        });
     }
 });
 
@@ -256,6 +259,17 @@ function getInvestmentData() {
 
 function setInvestmentData(value) {
     localStorage.setItem(getUserStorageKey(investmentKey), Number(value || 0).toFixed(2));
+}
+
+async function loadInventoryFromSupabase() {
+    try {
+        const inventory = await getInventoryItems();
+        if (Array.isArray(inventory)) {
+            setInventoryData(inventory);
+        }
+    } catch (error) {
+        console.error('Erro ao carregar estoque do Supabase:', error);
+    }
 }
 
 async function addInvestment(amount) {
