@@ -444,17 +444,10 @@ function renderInventory(filter = '') {
             row.appendChild(priceCell);
 
             const actionCell = document.createElement('td');
-            const editButton = document.createElement('button');
-            editButton.type = 'button';
-            editButton.className = 'table-action-btn';
-            editButton.textContent = 'Editar foto';
-            editButton.addEventListener('click', () => showEditProductPhotoModal(group.product, group.size));
-            actionCell.appendChild(editButton);
-
             const deleteButton = document.createElement('button');
             deleteButton.type = 'button';
             deleteButton.className = 'table-action-btn delete-btn';
-            deleteButton.textContent = 'Excluir';
+            deleteButton.textContent = group.batches.length > 1 ? 'Excluir' : 'Excluir';
             deleteButton.addEventListener('click', () => deleteGroupedInventoryItem(group.product, group.size));
             actionCell.appendChild(deleteButton);
             row.appendChild(actionCell);
@@ -719,123 +712,6 @@ function deleteGroupedInventoryItem(product, size) {
     // Quando houver múltiplos lotes, abrir o painel com botões de lixeira
     showBatchSellingPrices(product, size, { allowDelete: true });
     return;
-}
-
-function showEditProductPhotoModal(product, size) {
-    const inventoryData = getInventoryData();
-    const batches = inventoryData
-        .map((item, index) => ({ ...item, batchIndex: index }))
-        .filter(item => item.product === product && item.size === size && (parseInt(item.quantity, 10) || 0) > 0);
-
-    if (batches.length === 0) {
-        alert('Nenhum lote encontrado para este produto.');
-        return;
-    }
-
-    const targetBatch = batches.find(batch => batch.image) || batches[0];
-    let selectedPhoto = targetBatch.image || null;
-
-    const overlay = document.createElement('div');
-    Object.assign(overlay.style, {
-        position: 'fixed', top: '0', left: '0', right: '0', bottom: '0', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px'
-    });
-
-    const modal = document.createElement('div');
-    Object.assign(modal.style, {
-        background: '#fff', borderRadius: '14px', width: '580px', maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '24px', boxShadow: '0 20px 50px rgba(0,0,0,0.2)'
-    });
-
-    const title = document.createElement('h3');
-    title.textContent = `Editar foto — ${product}${size ? ` (${size})` : ''}`;
-    Object.assign(title.style, { margin: '0 0 12px 0', fontSize: '22px', color: '#0f172a' });
-    modal.appendChild(title);
-
-    const description = document.createElement('p');
-    description.textContent = 'Escolha uma imagem para o produto. A foto será aplicada ao lote principal do produto.';
-    Object.assign(description.style, { margin: '0 0 20px', color: '#475569', lineHeight: '1.6' });
-    modal.appendChild(description);
-
-    const preview = document.createElement('div');
-    Object.assign(preview.style, { marginBottom: '16px', width: '100%', minHeight: '180px', borderRadius: '12px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e2e8f0' });
-    const previewImg = document.createElement('img');
-    previewImg.src = selectedPhoto || '';
-    previewImg.alt = product;
-    Object.assign(previewImg.style, { maxWidth: '100%', maxHeight: '100%', borderRadius: '12px', objectFit: 'contain', display: selectedPhoto ? 'block' : 'none' });
-    const previewText = document.createElement('span');
-    previewText.textContent = selectedPhoto ? '' : 'Sem imagem atual';
-    Object.assign(previewText.style, { color: '#64748b', fontSize: '14px' });
-    preview.appendChild(previewImg);
-    preview.appendChild(previewText);
-    modal.appendChild(preview);
-
-    const fileRow = document.createElement('div');
-    Object.assign(fileRow.style, { marginBottom: '20px' });
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = 'image/*';
-    Object.assign(fileInput.style, { width: '100%' });
-    fileInput.addEventListener('change', (event) => {
-        const file = event.target.files && event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-            selectedPhoto = reader.result;
-            previewImg.src = selectedPhoto;
-            previewImg.style.display = 'block';
-            previewText.textContent = '';
-        };
-        reader.readAsDataURL(file);
-    });
-    fileRow.appendChild(fileInput);
-    modal.appendChild(fileRow);
-
-    const actions = document.createElement('div');
-    Object.assign(actions.style, { display: 'flex', justifyContent: 'flex-end', gap: '12px' });
-
-    const cancelBtn = document.createElement('button');
-    cancelBtn.type = 'button';
-    cancelBtn.textContent = 'Cancelar';
-    Object.assign(cancelBtn.style, { padding: '10px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', color: '#334155', cursor: 'pointer' });
-    cancelBtn.addEventListener('click', () => overlay.remove());
-    actions.appendChild(cancelBtn);
-
-    const saveBtn = document.createElement('button');
-    saveBtn.type = 'button';
-    saveBtn.textContent = 'Salvar imagem';
-    Object.assign(saveBtn.style, { padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer' });
-    saveBtn.addEventListener('click', async () => {
-        if (!selectedPhoto) {
-            alert('Selecione uma imagem antes de salvar.');
-            return;
-        }
-        const inventoryDataToUpdate = getInventoryData();
-        const target = inventoryDataToUpdate[targetBatch.batchIndex];
-        if (!target) {
-            alert('Não foi possível localizar o lote para atualizar a foto.');
-            return;
-        }
-        target.image = selectedPhoto;
-        setInventoryData(inventoryDataToUpdate);
-        renderInventory(inventorySearch ? inventorySearch.value : '');
-        populateProductOptions();
-        try {
-            if (target.created) {
-                await updateInventoryItemImage(target.created, selectedPhoto);
-            }
-        } catch (error) {
-            console.error('Erro ao sincronizar imagem do produto no Supabase:', error);
-        }
-        overlay.remove();
-    });
-    actions.appendChild(saveBtn);
-
-    modal.appendChild(actions);
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
-
-    overlay.addEventListener('click', (event) => {
-        if (event.target === overlay) overlay.remove();
-    });
 }
 
 function deleteInventoryItem(index) {
