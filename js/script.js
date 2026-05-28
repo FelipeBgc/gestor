@@ -108,6 +108,10 @@ let activeFinanceCategory = 'recebido';
 const authKey = 'gestorLoggedIn';
 const currentUserKey = 'gestorCurrentUser';
 const currentShopKey = 'gestorCurrentShop';
+const dashboardProductsEl = document.getElementById('dashboard-products');
+const dashboardClientsEl = document.getElementById('dashboard-clients');
+const dashboardOrdersEl = document.getElementById('dashboard-orders');
+const dashboardInvestmentEl = document.getElementById('dashboard-investment');
 
 function getCurrentUser() {
     return localStorage.getItem(currentUserKey) || '';
@@ -202,6 +206,9 @@ window.addEventListener('DOMContentLoaded', () => {
     setupLogoutButtons();
     displayLoggedUser();
     initializeInvestment();
+    if (currentPage === 'gestor.html') {
+        renderDashboard();
+    }
     if (currentPage === 'cadastrar.html') {
         initializeProductMode();
     }
@@ -217,6 +224,24 @@ function getInventoryData() {
     } catch {
         return [];
     }
+}
+
+function renderDashboard() {
+    if (!dashboardProductsEl || !dashboardClientsEl || !dashboardOrdersEl || !dashboardInvestmentEl) {
+        return;
+    }
+
+    const inventoryData = getInventoryData();
+    const clients = getClientsData();
+    const orders = getOrdersData();
+    const investment = getInvestmentData();
+
+    const totalProducts = inventoryData.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+
+    dashboardProductsEl.textContent = totalProducts.toString();
+    dashboardClientsEl.textContent = clients.length.toString();
+    dashboardOrdersEl.textContent = orders.length.toString();
+    dashboardInvestmentEl.textContent = `R$ ${investment.toFixed(2).replace('.', ',')}`;
 }
 
 function setInventoryData(data) {
