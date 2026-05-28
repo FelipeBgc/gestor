@@ -1454,16 +1454,23 @@ function renderFinanceDetails(category) {
     if (category === 'atraso') items = totals.overdueOrders;
     items = items.slice().sort((a, b) => new Date(b.created || b.date) - new Date(a.created || a.date));
     financeDetailList.innerHTML = items.length === 0 ? '<p>Nenhum pedido encontrado para este tipo.</p>' : items.map(order => {
-        const amount = category === 'recebido'
-            ? parseFloat(order.total) || 0
-            : Math.max(0, (parseFloat(order.total) || 0) - (parseFloat(order.signalAmount) || 0));
+        const totalAmount = parseFloat(order.total) || 0;
+        const signalAmount = parseFloat(order.signalAmount) || 0;
+        const remainingAmount = Math.max(0, totalAmount - signalAmount);
+        const hasSignal = order.paymentCondition === 'sinal';
+        const amount = category === 'recebido' ? totalAmount : remainingAmount;
         const dueDate = order.signalDate ? `Vencimento: ${order.signalDate}` : '';
+        const valueHtml = hasSignal
+            ? `<span><strong>Valor:</strong> ${formatMoney(totalAmount)}</span>`
+                + `<span><strong>Sinal:</strong> ${formatMoney(signalAmount)}</span>`
+                + (category !== 'recebido' ? `<span><strong>A receber:</strong> ${formatMoney(remainingAmount)}</span>` : '')
+            : `<span><strong>Valor:</strong> ${formatMoney(amount)}</span>`;
         return `
             <div class="finance-detail-item">
                 <strong>${order.code || 'Pedido'}</strong>
                 <span><strong>Cliente:</strong> ${order.clientName || '—'}</span>
                 <span><strong>Produto:</strong> ${order.productName || '—'}</span>
-                <span><strong>Valor:</strong> ${formatMoney(amount)}</span>
+                ${valueHtml}
                 <span>${dueDate}</span>
             </div>`;
     }).join('');
@@ -1694,7 +1701,7 @@ function populateProductOptions() {
     groupedProducts.forEach((group, index) => {
         const option = document.createElement('option');
         option.value = `group_${index}`;
-        option.textContent = `${group.product}${group.size ? ` (${group.size})` : ''} - ${formatMoney(group.batches[0]?.sellingPrice || 0)}`;
+        option.textContent = `${group.product}${group.size ? ` (${group.size})` : ''} — Qtd: ${group.quantity} — ${formatMoney(group.batches[0]?.sellingPrice || 0)}`;
         orderProductSelect.appendChild(option);
     });
     if (current) orderProductSelect.value = current;
