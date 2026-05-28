@@ -1,4 +1,4 @@
-import { createInventoryItem, updateInventoryItem, deleteInventoryItem, createClientRecord, upsertOrder, recordInvestment, createAgendaEventRow, deleteAgendaEventRow, getInventoryItems } from './supabase-data.js';
+import { createInventoryItem, createClientRecord, upsertOrder, recordInvestment, createAgendaEventRow, deleteAgendaEventRow, getInventoryItems, updateInventoryItemImage, updateInventoryItem, deleteInventoryItemRow } from './supabase-data.js';
 
 const inventoryKey = 'gestorInventory';
 const inventorySearch = document.getElementById('inventory-search');
@@ -266,8 +266,14 @@ async function loadInventoryFromSupabase() {
         const inventory = await getInventoryItems();
         if (Array.isArray(inventory)) {
             setInventoryData(inventory);
-            renderFinance();
-            renderDashboard();
+
+            const investmentKeyName = getUserStorageKey(investmentKey);
+            const existingInvestment = localStorage.getItem(investmentKeyName);
+            if (existingInvestment === null) {
+                // Apenas inicializa o investimento automático no primeiro carregamento quando ainda não há valor salvo.
+                const sum = inventory.reduce((s, it) => s + (parseFloat(it.total) || 0), 0);
+                setInvestmentData(sum);
+            }
         }
     } catch (error) {
         console.error('Erro ao carregar estoque do Supabase:', error);
@@ -287,7 +293,9 @@ async function addInvestment(amount) {
 
 function initializeInvestment() {
     if (localStorage.getItem(getUserStorageKey(investmentKey)) !== null) return;
-    setInvestmentData(0);
+    const inventoryData = getInventoryData();
+    const initialInvestment = inventoryData.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
+    setInvestmentData(initialInvestment);
 }
 
 function checkInventoryWarning() {
@@ -421,12 +429,12 @@ function renderInventory(filter = '') {
             const priceCell = document.createElement('td');
             priceCell.setAttribute('data-label', 'Preço de venda');
             if (group.batches.length > 1) {
-                const viewLotsButton = document.createElement('button');
-                viewLotsButton.type = 'button';
-                viewLotsButton.className = 'table-action-btn';
-                viewLotsButton.textContent = 'Ver lotes';
-                viewLotsButton.addEventListener('click', () => showBatchSellingPrices(group.product, group.size));
-                priceCell.appendChild(viewLotsButton);
+                        const viewLotsButton = document.createElement('button');
+                        viewLotsButton.type = 'button';
+                        viewLotsButton.className = 'table-action-btn';
+                        viewLotsButton.textContent = 'Ver lotes';
+                        viewLotsButton.addEventListener('click', () => showBatchesModal(group.product, group.size));
+                        priceCell.appendChild(viewLotsButton);
             } else if (group.batches.length === 1) {
                 const sellingPrice = parseFloat(group.batches[0].sellingPrice) || 0;
                 priceCell.textContent = formatMoney(sellingPrice);
@@ -439,7 +447,7 @@ function renderInventory(filter = '') {
             const deleteButton = document.createElement('button');
             deleteButton.type = 'button';
             deleteButton.className = 'table-action-btn delete-btn';
-            deleteButton.textContent = 'Excluir';
+            deleteButton.textContent = group.batches.length > 1 ? 'Excluir' : 'Excluir';
             deleteButton.addEventListener('click', () => deleteGroupedInventoryItem(group.product, group.size));
             actionCell.appendChild(deleteButton);
             row.appendChild(actionCell);
@@ -503,24 +511,185 @@ function hideBatchPanel() {
 }
 
 function showBatchSellingPrices(product, size, options = {}) {
+    // compatibilidade: agora abrimos modal de lotes
+    showBatchesModal(product, size, options);
+}
+
+function showBatchesModal(product, size, options = {}) {
     const inventoryData = getInventoryData();
     const batches = inventoryData
+        .map((item, index) => ({ ...item, batchIndex: index }))
         .filter(item => item.product === product && item.size === size && (parseInt(item.quantity, 10) || 0) > 0);
-
-    const header = `${product}${size ? ` (${size})` : ''}`;
 
     if (batches.length === 0) {
         alert('Nenhum lote encontrado para este produto.');
         return;
     }
 
-    const lines = batches.map((batch, idx) => {
-        const costInfo = batch.costPrice ? ` / Custo ${formatMoney(batch.costPrice)}` : '';
-        const marginInfo = batch.profitMargin ? ` / Lucro ${batch.profitMargin}%` : '';
-        return `${idx + 1}. Qtd ${batch.quantity} — ${formatMoney(batch.sellingPrice || 0)}${costInfo}${marginInfo}`;
+    // criar overlay/modal
+    const overlay = document.createElement('div');
+    overlay.className = 'batches-modal-overlay';
+    Object.assign(overlay.style, {
+        position: 'fixed', top: '0', left: '0', right: '0', bottom: '0', background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, backdropFilter: 'blur(2px)'
     });
 
-    alert(`Preços de venda para ${header}:\n\n${lines.join('\n')}`);
+    const modal = document.createElement('div');
+    modal.className = 'batches-modal';
+    Object.assign(modal.style, { 
+        background: '#fff', borderRadius: '12px', width: '680px', maxHeight: '85vh', overflowY: 'auto', padding: '28px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+    });
+
+    const headerDiv = document.createElement('div');
+    Object.assign(headerDiv.style, { marginBottom: '24px' });
+    
+    const title = document.createElement('h2');
+    title.textContent = `${product}${size ? ` (${size})` : ''}`;
+    Object.assign(title.style, { margin: '0 0 8px 0', fontSize: '24px', fontWeight: '600', color: '#0f172a' });
+    headerDiv.appendChild(title);
+
+    const batchCount = document.createElement('span');
+    batchCount.textContent = `${batches.length} lote${batches.length !== 1 ? 's' : ''}`;
+    Object.assign(batchCount.style, { color: '#64748b', fontSize: '14px', fontWeight: '500' });
+    headerDiv.appendChild(batchCount);
+
+    modal.appendChild(headerDiv);
+
+    const divider = document.createElement('div');
+    Object.assign(divider.style, { height: '1px', background: '#e2e8f0', marginBottom: '20px' });
+    modal.appendChild(divider);
+
+    const list = document.createElement('div');
+    list.className = 'batches-list';
+    batches.forEach((batch, idx) => {
+        const itemCard = document.createElement('div');
+        Object.assign(itemCard.style, { 
+            background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', marginBottom: '12px', transition: 'all 0.2s ease'
+        });
+        itemCard.addEventListener('mouseenter', () => {
+            itemCard.style.background = '#f1f5f9';
+            itemCard.style.borderColor = '#cbd5e1';
+        });
+        itemCard.addEventListener('mouseleave', () => {
+            itemCard.style.background = '#f8fafc';
+            itemCard.style.borderColor = '#e2e8f0';
+        });
+
+        const itemHeader = document.createElement('div');
+        Object.assign(itemHeader.style, { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' });
+
+        const batchLabel = document.createElement('span');
+        batchLabel.textContent = `Lote ${idx + 1}`;
+        Object.assign(batchLabel.style, { fontWeight: '600', color: '#0f172a', fontSize: '15px' });
+        itemHeader.appendChild(batchLabel);
+
+        const quantityBadge = document.createElement('span');
+        quantityBadge.textContent = `${batch.quantity} ${batch.quantity === 1 ? 'unidade' : 'unidades'}`;
+        Object.assign(quantityBadge.style, { background: '#dbeafe', color: '#1e40af', padding: '4px 10px', borderRadius: '20px', fontSize: '13px', fontWeight: '500' });
+        itemHeader.appendChild(quantityBadge);
+
+        itemCard.appendChild(itemHeader);
+
+        const infoGrid = document.createElement('div');
+        Object.assign(infoGrid.style, { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' });
+
+        const priceDiv = document.createElement('div');
+        priceDiv.innerHTML = `<div style="color: #64748b; font-size: 12px; font-weight: 500; margin-bottom: 4px;">PREÇO DE VENDA</div><div style="color: #0f172a; font-size: 16px; font-weight: 600;">${formatMoney(batch.sellingPrice || 0)}</div>`;
+        infoGrid.appendChild(priceDiv);
+
+        const costDiv = document.createElement('div');
+        const profitText = batch.profitMargin ? ` (${batch.profitMargin}% lucro)` : '';
+        costDiv.innerHTML = `<div style="color: #64748b; font-size: 12px; font-weight: 500; margin-bottom: 4px;">CUSTO</div><div style="color: #0f172a; font-size: 16px; font-weight: 600;">${batch.costPrice ? formatMoney(batch.costPrice) : '—'}${profitText}</div>`;
+        infoGrid.appendChild(costDiv);
+
+        const locationDiv = document.createElement('div');
+        locationDiv.innerHTML = `<div style="color: #64748b; font-size: 12px; font-weight: 500; margin-bottom: 4px;">LOCAL DE COMPRA</div><div style="color: #0f172a; font-size: 14px;">${batch.purchaseLocation || 'Não informado'}</div>`;
+        infoGrid.appendChild(locationDiv);
+
+        const createdDiv = document.createElement('div');
+        createdDiv.innerHTML = `<div style="color: #64748b; font-size: 12px; font-weight: 500; margin-bottom: 4px;">CRIADO EM</div><div style="color: #0f172a; font-size: 13px;">${new Date(batch.created).toLocaleDateString('pt-BR', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</div>`;
+        infoGrid.appendChild(createdDiv);
+
+        itemCard.appendChild(infoGrid);
+
+        if (options.allowDelete !== false) {
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.textContent = '🗑️ Excluir lote';
+            delBtn.title = 'Excluir este lote';
+            Object.assign(delBtn.style, { 
+                background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', width: '100%', padding: '8px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: '500', fontSize: '13px', transition: 'all 0.2s ease'
+            });
+            delBtn.addEventListener('mouseover', () => {
+                delBtn.style.background = '#fee2e2';
+                delBtn.style.borderColor = '#fca5a5';
+            });
+            delBtn.addEventListener('mouseout', () => {
+                delBtn.style.background = '#fef2f2';
+                delBtn.style.borderColor = '#fecaca';
+            });
+            delBtn.addEventListener('click', () => {
+                const confirmed = confirm(`Excluir lote: Qtd ${batch.quantity} — ${formatMoney(batch.sellingPrice || 0)}?`);
+                if (!confirmed) return;
+                deleteInventoryItem(batch.batchIndex);
+                overlay.remove();
+                renderInventory(inventorySearch ? inventorySearch.value : '');
+                populateProductOptions();
+                renderFinance();
+            });
+            itemCard.appendChild(delBtn);
+        }
+
+        list.appendChild(itemCard);
+    });
+
+    modal.appendChild(list);
+
+    const footerDiv = document.createElement('div');
+    Object.assign(footerDiv.style, { marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '12px', justifyContent: 'flex-end' });
+
+    if (batches.length > 0) {
+        const deleteGroupBtn = document.createElement('button');
+        deleteGroupBtn.type = 'button';
+        deleteGroupBtn.textContent = '🗑️ Excluir produto';
+        Object.assign(deleteGroupBtn.style, { 
+            background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', padding: '10px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: '500', fontSize: '14px', transition: 'all 0.2s ease'
+        });
+        deleteGroupBtn.addEventListener('mouseover', () => {
+            deleteGroupBtn.style.background = '#fca5a5';
+            deleteGroupBtn.style.color = '#fff';
+        });
+        deleteGroupBtn.addEventListener('mouseout', () => {
+            deleteGroupBtn.style.background = '#fee2e2';
+            deleteGroupBtn.style.color = '#991b1b';
+        });
+        deleteGroupBtn.addEventListener('click', () => {
+            const confirmed = confirm(`Excluir todo o produto ${product}${size ? ` (${size})` : ''} e todos os lotes?`);
+            if (!confirmed) return;
+            deleteProductGroup(product, size);
+            overlay.remove();
+        });
+        footerDiv.appendChild(deleteGroupBtn);
+    }
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.textContent = 'Fechar';
+    Object.assign(closeBtn.style, { 
+        background: '#e2e8f0', color: '#1e293b', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: '500', fontSize: '14px', transition: 'all 0.2s ease'
+    });
+    closeBtn.addEventListener('mouseover', () => {
+        closeBtn.style.background = '#cbd5e1';
+    });
+    closeBtn.addEventListener('mouseout', () => {
+        closeBtn.style.background = '#e2e8f0';
+    });
+    closeBtn.addEventListener('click', () => overlay.remove());
+    footerDiv.appendChild(closeBtn);
+
+    modal.appendChild(footerDiv);
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
 }
 
 function deleteGroupedInventoryItem(product, size) {
@@ -536,13 +705,7 @@ function deleteGroupedInventoryItem(product, size) {
     if (batches.length === 1) {
         const confirmed = confirm(`Deseja excluir o produto ${productLabel} do estoque?`);
         if (!confirmed) return;
-        inventoryData.splice(batches[0].batchIndex, 1);
-        setInventoryData(inventoryData);
-        hideBatchPanel();
-        renderInventory(inventorySearch ? inventorySearch.value : '');
-        populateProductOptions();
-        renderFinance();
-        alert('✅ Produto removido do estoque.');
+        deleteInventoryItem(batches[0].batchIndex);
         return;
     }
 
@@ -559,13 +722,65 @@ function deleteInventoryItem(index) {
     const itemLabel = `${item.product}${item.size ? ' - ' + item.size : ''}`;
     const confirmed = confirm(`Tem certeza que deseja excluir ${itemLabel} do estoque?`);
     if (!confirmed) return;
+    const deletedImage = item.image;
+    const itemCreatedAt = item.created;
 
+    // remove o item
     inventoryData.splice(index, 1);
+
+    // se o item excluído tinha imagem e existem outros lotes do mesmo produto, transferir a imagem
+    if (deletedImage) {
+        const remainingSame = inventoryData.filter(it => it.product === item.product && it.size === item.size);
+        if (remainingSame.length > 0) {
+            // preferir manter imagem existente em outro lote; caso nenhum lote tenha imagem, aplicar à primeira
+            let target = remainingSame.find(r => r.image) || remainingSame[0];
+            if (target && !target.image) {
+                target.image = deletedImage;
+                // atualizar no Supabase se possível
+                if (target.created) {
+                    updateInventoryItemImage(target.created, deletedImage).catch(err => {
+                        console.error('Falha ao sincronizar imagem transferida para Supabase:', err);
+                    });
+                }
+            }
+        }
+    }
+
     setInventoryData(inventoryData);
     renderInventory(inventorySearch ? inventorySearch.value : '');
     populateProductOptions();
     renderFinance();
+    if (itemCreatedAt) {
+        deleteInventoryItemRow(itemCreatedAt).catch(err => {
+            console.error('Falha ao sincronizar exclusão de item no Supabase:', err);
+        });
+    }
     alert('✅ Produto excluído do estoque.');
+}
+
+async function deleteProductGroup(product, size) {
+    const inventoryData = getInventoryData();
+    const itemsToDelete = inventoryData.filter(it => it.product === product && it.size === size);
+    if (itemsToDelete.length === 0) return;
+
+    const updatedInventory = inventoryData.filter(it => !(it.product === product && it.size === size));
+    setInventoryData(updatedInventory);
+    renderInventory(inventorySearch ? inventorySearch.value : '');
+    populateProductOptions();
+    renderFinance();
+
+    try {
+        await Promise.all(itemsToDelete.map(item => {
+            if (item.created) {
+                return deleteInventoryItemRow(item.created);
+            }
+            return Promise.resolve(null);
+        }));
+    } catch (error) {
+        console.error('Erro ao sincronizar exclusão em massa de produto no Supabase:', error);
+    }
+
+    alert('✅ Produto removido do estoque.');
 }
 
 // Product Mode Management
@@ -798,10 +1013,7 @@ async function addNewProduct() {
     await addInvestment(total);
     setInventoryData(inventoryData);
     try {
-        const result = await createInventoryItem(newItem);
-        if (result?.id) {
-            newItem.id = result.id;
-        }
+        await createInventoryItem(newItem);
     } catch (error) {
         console.error('Erro ao sincronizar estoque com Supabase:', error);
     }
@@ -810,7 +1022,6 @@ async function addNewProduct() {
     resetForm();
     initializeProductMode();
     renderFinance();
-    renderDashboard();
     alert('✅ Produto adicionado ao estoque com sucesso!');
 }
 
@@ -857,6 +1068,7 @@ async function addUnitsToExistingProduct() {
         size: selectedGroup.size,
         quantity,
         total: addedTotal,
+        image: representative.image || currentProductImageData || null,
         costPrice: existingCost,
         profitMargin: existingProfitMargin,
         sellingPrice: updatedSellingPrice,
@@ -867,10 +1079,7 @@ async function addUnitsToExistingProduct() {
     await addInvestment(addedTotal);
     setInventoryData(inventoryData);
     try {
-        const result = await createInventoryItem(newItem);
-        if (result?.id) {
-            newItem.id = result.id;
-        }
+        await createInventoryItem(newItem);
     } catch (error) {
         console.error('Erro ao sincronizar estoque com Supabase:', error);
     }
@@ -879,7 +1088,6 @@ async function addUnitsToExistingProduct() {
     populateProductOptions();
     initializeProductMode();
     renderFinance();
-    renderDashboard();
     alert(`${quantity} unidade(s) adicionada(s) ao estoque.`);
 }
 
@@ -1760,43 +1968,31 @@ async function saveOrder() {
 
     if (!editingOrderCode) {
         const unitCost = selectedBatch.costPrice ? parseFloat(selectedBatch.costPrice) : (stockQuantity > 0 ? (parseFloat(selectedBatch.total) || 0) / stockQuantity : 0);
+        const remainingQuantity = stockQuantity - quantity;
         const remainingCost = Math.max(0, (parseFloat(selectedBatch.total) || 0) - unitCost * quantity);
-        const updatedQuantity = stockQuantity - quantity;
-        inventoryData[selectedBatchInventoryIndex].quantity = updatedQuantity;
-        inventoryData[selectedBatchInventoryIndex].total = remainingCost;
-        const itemId = selectedBatch?.id || inventoryData[selectedBatchInventoryIndex]?.id;
+        const batchCreatedAt = selectedBatch.created;
 
-        if (updatedQuantity <= 0) {
+        inventoryData[selectedBatchInventoryIndex].quantity = remainingQuantity;
+        inventoryData[selectedBatchInventoryIndex].total = remainingCost;
+        if (remainingQuantity <= 0) {
             inventoryData.splice(selectedBatchInventoryIndex, 1);
-            if (itemId) {
-                try {
-                    await deleteInventoryItem(itemId);
-                } catch (error) {
-                    console.error('Erro ao excluir item do estoque no Supabase:', error);
-                }
-            }
-        } else {
-            if (itemId) {
-                try {
-                    await updateInventoryItem(itemId, {
-                        quantity: updatedQuantity,
-                        total: remainingCost,
-                        cost_price: parseFloat(selectedBatch.costPrice) || 0,
-                        selling_price: parseFloat(selectedBatch.sellingPrice) || 0,
-                        purchase_location: selectedBatch.purchaseLocation || '',
-                        details: selectedBatch.details || '',
-                    });
-                } catch (error) {
-                    console.error('Erro ao atualizar item do estoque no Supabase:', error);
-                }
-            }
         }
 
         setInventoryData(inventoryData);
         renderInventory(inventorySearch ? inventorySearch.value : '');
         populateProductOptions();
-        renderFinance();
-        renderDashboard();
+
+        try {
+            if (batchCreatedAt) {
+                if (remainingQuantity > 0) {
+                    await updateInventoryItem(batchCreatedAt, { quantity: remainingQuantity, total: remainingCost });
+                } else {
+                    await deleteInventoryItemRow(batchCreatedAt);
+                }
+            }
+        } catch (error) {
+            console.error('Erro ao sincronizar alteração de estoque do pedido no Supabase:', error);
+        }
     }
 
     const orders = getOrdersData();
@@ -1839,7 +2035,6 @@ async function saveOrder() {
         console.error('Erro ao sincronizar pedido com Supabase:', error);
     }
     renderOrders(ordersSearch ? ordersSearch.value : '');
-    renderDashboard();
     renderFinance();
     resetOrderForm();
     if (orderFormEl) orderFormEl.classList.add('hidden-field');

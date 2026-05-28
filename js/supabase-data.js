@@ -48,36 +48,9 @@ export async function createInventoryItem(item) {
         updated_at: new Date().toISOString(),
     };
 
-    const { data, error } = await supabase.from('gestor_inventory').insert([payload]).select('id');
+    const { error } = await supabase.from('gestor_inventory').insert([payload]);
     if (error) {
         console.error('Erro ao salvar item de estoque no Supabase:', error);
-        return { error };
-    }
-    return { id: data?.[0]?.id ?? null };
-}
-
-export async function updateInventoryItem(itemId, updates) {
-    if (!itemId) {
-        throw new Error('Item ID necessário para atualizar o estoque.');
-    }
-    const payload = {
-        ...updates,
-        updated_at: new Date().toISOString(),
-    };
-    const { error } = await supabase.from('gestor_inventory').update(payload).eq('id', itemId);
-    if (error) {
-        console.error('Erro ao atualizar item de estoque no Supabase:', error);
-    }
-    return error;
-}
-
-export async function deleteInventoryItem(itemId) {
-    if (!itemId) {
-        throw new Error('Item ID necessário para excluir estoque.');
-    }
-    const { error } = await supabase.from('gestor_inventory').delete().eq('id', itemId);
-    if (error) {
-        console.error('Erro ao excluir item de estoque no Supabase:', error);
     }
     return error;
 }
@@ -86,7 +59,7 @@ export async function getInventoryItems() {
     const user_id = await ensureUserId();
     const { data, error } = await supabase
         .from('gestor_inventory')
-        .select('id,product,details,purchase_location,size,quantity,total,cost_price,profit_margin,selling_price,image,created_at')
+        .select('product,details,purchase_location,size,quantity,total,cost_price,profit_margin,selling_price,image,created_at')
         .eq('user_id', user_id)
         .order('created_at', { ascending: false });
 
@@ -218,4 +191,68 @@ export async function deleteAgendaEventRow(date, createdAt) {
         console.error('Erro ao excluir evento de agenda no Supabase:', error);
     }
     return error;
+}
+
+export async function updateInventoryItem(createdAt, updates = {}) {
+    const user_id = await ensureUserId();
+    const payload = {};
+    if (updates.hasOwnProperty('quantity')) payload.quantity = Number(updates.quantity) || 0;
+    if (updates.hasOwnProperty('total')) payload.total = Number(updates.total) || 0;
+    if (updates.hasOwnProperty('costPrice')) payload.cost_price = Number(updates.costPrice) || 0;
+    if (updates.hasOwnProperty('profitMargin')) payload.profit_margin = Number(updates.profitMargin) || 0;
+    if (updates.hasOwnProperty('sellingPrice')) payload.selling_price = Number(updates.sellingPrice) || 0;
+    if (updates.hasOwnProperty('image')) payload.image = updates.image || null;
+    if (Object.keys(payload).length === 0) return null;
+    payload.updated_at = new Date().toISOString();
+
+    try {
+        const { error } = await supabase
+            .from('gestor_inventory')
+            .update(payload)
+            .match({ user_id, created_at: createdAt });
+
+        if (error) {
+            console.error('Erro ao atualizar item de estoque no Supabase:', error);
+        }
+        return error;
+    } catch (e) {
+        console.error('Exceção ao atualizar item de estoque no Supabase:', e);
+        return e;
+    }
+}
+
+export async function deleteInventoryItemRow(createdAt) {
+    const user_id = await ensureUserId();
+    try {
+        const { error } = await supabase
+            .from('gestor_inventory')
+            .delete()
+            .match({ user_id, created_at: createdAt });
+
+        if (error) {
+            console.error('Erro ao excluir item de estoque no Supabase:', error);
+        }
+        return error;
+    } catch (e) {
+        console.error('Exceção ao excluir item de estoque no Supabase:', e);
+        return e;
+    }
+}
+
+export async function updateInventoryItemImage(createdAt, image) {
+    const user_id = await ensureUserId();
+    try {
+        const { error } = await supabase
+            .from('gestor_inventory')
+            .update({ image: image || null, updated_at: new Date().toISOString() })
+            .match({ user_id, created_at: createdAt });
+
+        if (error) {
+            console.error('Erro ao atualizar imagem do item no Supabase:', error);
+        }
+        return error;
+    } catch (e) {
+        console.error('Exceção ao atualizar imagem do item no Supabase:', e);
+        return e;
+    }
 }
