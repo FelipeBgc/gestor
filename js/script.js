@@ -1,4 +1,4 @@
-import { createInventoryItem, createClientRecord, upsertOrder, recordInvestment, createAgendaEventRow, deleteAgendaEventRow, getInventoryItems } from './supabase-data.js';
+import { createInventoryItem, updateInventoryItem, deleteInventoryItem, createClientRecord, upsertOrder, recordInvestment, createAgendaEventRow, deleteAgendaEventRow, getInventoryItems } from './supabase-data.js';
 
 const inventoryKey = 'gestorInventory';
 const inventorySearch = document.getElementById('inventory-search');
@@ -266,6 +266,8 @@ async function loadInventoryFromSupabase() {
         const inventory = await getInventoryItems();
         if (Array.isArray(inventory)) {
             setInventoryData(inventory);
+            renderFinance();
+            renderDashboard();
         }
     } catch (error) {
         console.error('Erro ao carregar estoque do Supabase:', error);
@@ -285,9 +287,7 @@ async function addInvestment(amount) {
 
 function initializeInvestment() {
     if (localStorage.getItem(getUserStorageKey(investmentKey)) !== null) return;
-    const inventoryData = getInventoryData();
-    const initialInvestment = inventoryData.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
-    setInvestmentData(initialInvestment);
+    setInvestmentData(0);
 }
 
 function checkInventoryWarning() {
@@ -798,7 +798,10 @@ async function addNewProduct() {
     await addInvestment(total);
     setInventoryData(inventoryData);
     try {
-        await createInventoryItem(newItem);
+        const result = await createInventoryItem(newItem);
+        if (result?.id) {
+            newItem.id = result.id;
+        }
     } catch (error) {
         console.error('Erro ao sincronizar estoque com Supabase:', error);
     }
@@ -807,6 +810,7 @@ async function addNewProduct() {
     resetForm();
     initializeProductMode();
     renderFinance();
+    renderDashboard();
     alert('✅ Produto adicionado ao estoque com sucesso!');
 }
 
@@ -863,7 +867,10 @@ async function addUnitsToExistingProduct() {
     await addInvestment(addedTotal);
     setInventoryData(inventoryData);
     try {
-        await createInventoryItem(newItem);
+        const result = await createInventoryItem(newItem);
+        if (result?.id) {
+            newItem.id = result.id;
+        }
     } catch (error) {
         console.error('Erro ao sincronizar estoque com Supabase:', error);
     }
@@ -872,6 +879,7 @@ async function addUnitsToExistingProduct() {
     populateProductOptions();
     initializeProductMode();
     renderFinance();
+    renderDashboard();
     alert(`${quantity} unidade(s) adicionada(s) ao estoque.`);
 }
 
@@ -1753,14 +1761,42 @@ async function saveOrder() {
     if (!editingOrderCode) {
         const unitCost = selectedBatch.costPrice ? parseFloat(selectedBatch.costPrice) : (stockQuantity > 0 ? (parseFloat(selectedBatch.total) || 0) / stockQuantity : 0);
         const remainingCost = Math.max(0, (parseFloat(selectedBatch.total) || 0) - unitCost * quantity);
-        inventoryData[selectedBatchInventoryIndex].quantity = stockQuantity - quantity;
+        const updatedQuantity = stockQuantity - quantity;
+        inventoryData[selectedBatchInventoryIndex].quantity = updatedQuantity;
         inventoryData[selectedBatchInventoryIndex].total = remainingCost;
-        if (inventoryData[selectedBatchInventoryIndex].quantity <= 0) {
+        const itemId = selectedBatch?.id || inventoryData[selectedBatchInventoryIndex]?.id;
+
+        if (updatedQuantity <= 0) {
             inventoryData.splice(selectedBatchInventoryIndex, 1);
+            if (itemId) {
+                try {
+                    await deleteInventoryItem(itemId);
+                } catch (error) {
+                    console.error('Erro ao excluir item do estoque no Supabase:', error);
+                }
+            }
+        } else {
+            if (itemId) {
+                try {
+                    await updateInventoryItem(itemId, {
+                        quantity: updatedQuantity,
+                        total: remainingCost,
+                        cost_price: parseFloat(selectedBatch.costPrice) || 0,
+                        selling_price: parseFloat(selectedBatch.sellingPrice) || 0,
+                        purchase_location: selectedBatch.purchaseLocation || '',
+                        details: selectedBatch.details || '',
+                    });
+                } catch (error) {
+                    console.error('Erro ao atualizar item do estoque no Supabase:', error);
+                }
+            }
         }
+
         setInventoryData(inventoryData);
         renderInventory(inventorySearch ? inventorySearch.value : '');
         populateProductOptions();
+        renderFinance();
+        renderDashboard();
     }
 
     const orders = getOrdersData();
@@ -1803,6 +1839,8 @@ async function saveOrder() {
         console.error('Erro ao sincronizar pedido com Supabase:', error);
     }
     renderOrders(ordersSearch ? ordersSearch.value : '');
+    renderDashboard();
+    renderFinance();
     resetOrderForm();
     if (orderFormEl) orderFormEl.classList.add('hidden-field');
     alert(editingOrderCode ? 'Pedido atualizado.' : 'Pedido salvo.');

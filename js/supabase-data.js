@@ -48,9 +48,36 @@ export async function createInventoryItem(item) {
         updated_at: new Date().toISOString(),
     };
 
-    const { error } = await supabase.from('gestor_inventory').insert([payload]);
+    const { data, error } = await supabase.from('gestor_inventory').insert([payload]).select('id');
     if (error) {
         console.error('Erro ao salvar item de estoque no Supabase:', error);
+        return { error };
+    }
+    return { id: data?.[0]?.id ?? null };
+}
+
+export async function updateInventoryItem(itemId, updates) {
+    if (!itemId) {
+        throw new Error('Item ID necessário para atualizar o estoque.');
+    }
+    const payload = {
+        ...updates,
+        updated_at: new Date().toISOString(),
+    };
+    const { error } = await supabase.from('gestor_inventory').update(payload).eq('id', itemId);
+    if (error) {
+        console.error('Erro ao atualizar item de estoque no Supabase:', error);
+    }
+    return error;
+}
+
+export async function deleteInventoryItem(itemId) {
+    if (!itemId) {
+        throw new Error('Item ID necessário para excluir estoque.');
+    }
+    const { error } = await supabase.from('gestor_inventory').delete().eq('id', itemId);
+    if (error) {
+        console.error('Erro ao excluir item de estoque no Supabase:', error);
     }
     return error;
 }
@@ -59,7 +86,7 @@ export async function getInventoryItems() {
     const user_id = await ensureUserId();
     const { data, error } = await supabase
         .from('gestor_inventory')
-        .select('product,details,purchase_location,size,quantity,total,cost_price,profit_margin,selling_price,image,created_at')
+        .select('id,product,details,purchase_location,size,quantity,total,cost_price,profit_margin,selling_price,image,created_at')
         .eq('user_id', user_id)
         .order('created_at', { ascending: false });
 
