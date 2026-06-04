@@ -986,10 +986,17 @@ function selectAnotherProduct() {
 }
 
 async function addStock() {
-    if (currentProductMode === 'new') {
-        await addNewProduct();
-    } else if (currentProductMode === 'existing') {
-        await addUnitsToExistingProduct();
+    const btn = addStockBtn;
+    const origText = btn ? btn.textContent : null;
+    if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+    try {
+        if (currentProductMode === 'new') {
+            await addNewProduct();
+        } else if (currentProductMode === 'existing') {
+            await addUnitsToExistingProduct();
+        }
+    } finally {
+        if (btn) { btn.disabled = false; if (origText !== null) btn.textContent = origText; }
     }
 }
 
@@ -1260,8 +1267,12 @@ function toggleClientType() {
 
 async function addClient() {
     if (!clientNameInput) return;
-    const name = clientNameInput.value.trim();
-    if (!name) { alert('Nome do cliente é obrigatório.'); clientNameInput.focus(); return; }
+    const btn = saveClientBtn;
+    const origText = btn ? btn.textContent : null;
+    if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+    try {
+        const name = clientNameInput.value.trim();
+        if (!name) { alert('Nome do cliente é obrigatório.'); clientNameInput.focus(); return; }
     const source = clientSourceInput ? clientSourceInput.value : '';
     let type = 'pf';
     if (clientTypeInputs) {
@@ -1279,16 +1290,19 @@ async function addClient() {
     const clients = getClientsData();
     clients.push(client);
     setClientsData(clients);
-    try {
-        await createClientRecord(client);
-    } catch (error) {
-        console.error('Erro ao sincronizar cliente com Supabase:', error);
+        try {
+            await createClientRecord(client);
+        } catch (error) {
+            console.error('Erro ao sincronizar cliente com Supabase:', error);
+        }
+        renderClients(clientsSearch ? clientsSearch.value : '');
+        populateClientOptions();
+        resetClientForm();
+        if (clientFormEl) clientFormEl.classList.add('hidden-field');
+        alert('Cliente salvo.');
+    } finally {
+        if (btn) { btn.disabled = false; if (origText !== null) btn.textContent = origText; }
     }
-    renderClients(clientsSearch ? clientsSearch.value : '');
-    populateClientOptions();
-    resetClientForm();
-    if (clientFormEl) clientFormEl.classList.add('hidden-field');
-    alert('Cliente salvo.');
 }
 
 function getOrdersData() {
@@ -1671,16 +1685,24 @@ function renderEventList() {
 
 function saveAgendaEvent() {
     if (!agendaNotesTextarea) return;
+    const btn = saveAgendaEventBtn;
+    const origText = btn ? btn.textContent : null;
+    if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
     const note = agendaNotesTextarea.value.trim();
     if (!note) {
         alert('Escreva uma anotação antes de salvar.');
         agendaNotesTextarea.focus();
+        if (btn) { btn.disabled = false; if (origText !== null) btn.textContent = origText; }
         return;
     }
-    addAgendaEvent(selectedAgendaDate, note);
-    agendaNotesTextarea.value = '';
-    renderEventList();
-    renderCalendar();
+    try {
+        addAgendaEvent(selectedAgendaDate, note);
+        agendaNotesTextarea.value = '';
+        renderEventList();
+        renderCalendar();
+    } finally {
+        if (btn) { btn.disabled = false; if (origText !== null) btn.textContent = origText; }
+    }
 }
 
 function changeAgendaMonth(delta) {
@@ -1897,6 +1919,10 @@ function resetOrderForm() {
 
 async function saveOrder() {
     if (!orderCodeInput) return;
+    const btn = saveOrderBtn;
+    const origText = btn ? btn.textContent : null;
+    if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+    try {
     const code = orderCodeInput.value || generateOrderCode();
     const date = (orderDateInput?.value && orderDateInput.value.trim()) || new Date().toLocaleDateString('pt-BR');
     const selectedClient = orderClientSelect?.value || '';
@@ -2071,16 +2097,19 @@ async function saveOrder() {
         orders.push({ ...orderObject, created: new Date().toISOString() });
     }
     setOrdersData(orders);
-    try {
-        await upsertOrder(orderObject);
-    } catch (error) {
-        console.error('Erro ao sincronizar pedido com Supabase:', error);
+        try {
+            await upsertOrder(orderObject);
+        } catch (error) {
+            console.error('Erro ao sincronizar pedido com Supabase:', error);
+        }
+        renderOrders(ordersSearch ? ordersSearch.value : '');
+        renderFinance();
+        resetOrderForm();
+        if (orderFormEl) orderFormEl.classList.add('hidden-field');
+        alert(editingOrderCode ? 'Pedido atualizado.' : 'Pedido salvo.');
+    } finally {
+        if (btn) { btn.disabled = false; if (origText !== null) btn.textContent = origText; }
     }
-    renderOrders(ordersSearch ? ordersSearch.value : '');
-    renderFinance();
-    resetOrderForm();
-    if (orderFormEl) orderFormEl.classList.add('hidden-field');
-    alert(editingOrderCode ? 'Pedido atualizado.' : 'Pedido salvo.');
 }
 
 function renderOrders(filter = '') {
