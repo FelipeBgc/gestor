@@ -1,4 +1,4 @@
-import { createInventoryItem, createClientRecord, upsertOrder, recordInvestment, createAgendaEventRow, deleteAgendaEventRow, getInventoryItems, updateInventoryItemImage, updateInventoryItem, deleteInventoryItemRow } from './supabase-data.js';
+import { createInventoryItem, createClientRecord, upsertOrder, recordInvestment, createAgendaEventRow, deleteAgendaEventRow, getInventoryItems, updateInventoryItemImage, updateInventoryItem, deleteInventoryItemRow, getInvestmentSum } from './supabase-data.js';
 
 const inventoryKey = 'gestorInventory';
 const inventorySearch = document.getElementById('inventory-search');
@@ -202,10 +202,10 @@ function displayLoggedUser() {
     });
 }
 
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
     setupLogoutButtons();
     displayLoggedUser();
-    initializeInvestment();
+    await initializeInvestment();
     if (currentPage === 'gestor.html') {
         renderDashboard();
     }
@@ -252,9 +252,21 @@ function setInventoryData(data) {
 }
 
 function getInvestmentData() {
-    const value = localStorage.getItem(getUserStorageKey(investmentKey));
+    const investmentKeyName = getUserStorageKey(investmentKey);
+    const value = localStorage.getItem(investmentKeyName);
     const amount = parseFloat(value);
-    return Number.isFinite(amount) ? amount : 0;
+    if (Number.isFinite(amount)) {
+        return amount;
+    }
+
+    const inventoryData = getInventoryData();
+    if (inventoryData.length > 0) {
+        const initialInvestment = inventoryData.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
+        setInvestmentData(initialInvestment);
+        return initialInvestment;
+    }
+
+    return 0;
 }
 
 function setInvestmentData(value) {
@@ -286,13 +298,35 @@ async function addInvestment(amount) {
     setInvestmentData(value);
     try {
         await recordInvestment(amount, 'Investimento de estoque');
+        // sincroniza com o valor acumulado no banco para garantir consistência
+        try {
+            const dbSum = await getInvestmentSum();
+            if (Number.isFinite(dbSum) && dbSum >= 0) setInvestmentData(dbSum);
+        } catch (e) {
+            // não crítico: já atualizamos localmente
+            console.error('Erro ao confirmar soma de investimentos no Supabase:', e);
+        }
     } catch (error) {
         console.error('Erro ao registrar investimento no Supabase:', error);
     }
 }
 
-function initializeInvestment() {
-    if (localStorage.getItem(getUserStorageKey(investmentKey)) !== null) return;
+async function initializeInvestment() {
+    const investmentKeyName = getUserStorageKey(investmentKey);
+    if (localStorage.getItem(investmentKeyName) !== null) return;
+
+    // tenta ler do Supabase primeiro
+    try {
+        const dbSum = await getInvestmentSum();
+        if (Number.isFinite(dbSum) && dbSum > 0) {
+            setInvestmentData(dbSum);
+            return;
+        }
+    } catch (e) {
+        console.error('Erro ao obter investimento do Supabase:', e);
+    }
+
+    // fallback: inicializa a partir do estoque local
     const inventoryData = getInventoryData();
     const initialInvestment = inventoryData.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
     setInvestmentData(initialInvestment);

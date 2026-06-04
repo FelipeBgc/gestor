@@ -162,6 +162,26 @@ export async function recordInvestment(amount, description = '') {
     return error;
 }
 
+export async function getInvestmentSum() {
+    try {
+        const user_id = await ensureUserId();
+        const { data, error } = await supabase
+            .from('gestor_investments')
+            .select('amount')
+            .eq('user_id', user_id);
+
+        if (error) {
+            console.error('Erro ao buscar investimentos no Supabase:', error);
+            return 0;
+        }
+
+        return (data || []).reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+    } catch (e) {
+        console.error('Exceção ao buscar investimentos no Supabase:', e);
+        return 0;
+    }
+}
+
 export async function createAgendaEventRow(date, note, created = null) {
     const user_id = await ensureUserId();
     const payload = {
